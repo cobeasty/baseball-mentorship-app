@@ -13,6 +13,10 @@ export async function registerRoutes(
   // Setup auth first
   await setupAuth(app);
   registerAuthRoutes(app);
+  
+  // Register AI Chat routes
+  const { registerChatRoutes } = await import("./replit_integrations/chat");
+  registerChatRoutes(app);
 
   app.put(api.users.update.path, isAuthenticated, async (req: any, res) => {
     try {

@@ -2,6 +2,7 @@ import { pgTable, text, serial, integer, boolean, timestamp, varchar } from "dri
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "./models/auth";
+import { sql } from "drizzle-orm";
 
 // Export all auth models so they are included in schema
 export * from "./models/auth";
@@ -49,17 +50,45 @@ export const agreements = pgTable("agreements", {
   acceptedAt: timestamp("accepted_at").defaultNow(),
 });
 
+// AI Chat Tables
+export const conversations = pgTable("conversations", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversation_id").notNull().references(() => conversations.id, { onDelete: "cascade" }),
+  role: text("role").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
 export const insertModuleSchema = createInsertSchema(modules).omit({ id: true, createdAt: true });
 export const insertProgressSchema = createInsertSchema(userProgress).omit({ id: true, completedAt: true });
 export const insertVideoSchema = createInsertSchema(videos).omit({ id: true, submittedAt: true, status: true });
 export const insertFeedbackSchema = createInsertSchema(videoFeedback).omit({ id: true, createdAt: true });
 export const insertAgreementSchema = createInsertSchema(agreements).omit({ id: true, acceptedAt: true });
 
+export const insertConversationSchema = createInsertSchema(conversations).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertMessageSchema = createInsertSchema(messages).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type Module = typeof modules.$inferSelect;
 export type UserProgress = typeof userProgress.$inferSelect;
 export type Video = typeof videos.$inferSelect;
 export type VideoFeedback = typeof videoFeedback.$inferSelect;
 export type Agreement = typeof agreements.$inferSelect;
+export type Conversation = typeof conversations.$inferSelect;
+export type Message = typeof messages.$inferSelect;
 
 export type CreateModuleRequest = z.infer<typeof insertModuleSchema>;
 export type UpdateModuleRequest = Partial<CreateModuleRequest>;

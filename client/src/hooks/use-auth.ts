@@ -18,7 +18,10 @@ async function fetchUser(): Promise<User | null> {
 }
 
 async function logout(): Promise<void> {
-  window.location.href = "/api/logout";
+  // Try local-session logout first (works for both local and OIDC sessions)
+  await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+  // Redirect to home; for Replit OIDC users the server-side session is gone
+  window.location.href = "/";
 }
 
 export function useAuth() {

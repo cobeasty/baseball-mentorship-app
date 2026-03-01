@@ -26,6 +26,7 @@ export const users = pgTable("users", {
   dateOfBirth: timestamp("date_of_birth"),
   parentEmail: varchar("parent_email"),
   approvalStatus: text("approval_status").default("pending"), // 'pending', 'active', 'suspended'
+  passwordHash: varchar("password_hash"), // null for Replit OAuth users
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

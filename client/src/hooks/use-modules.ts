@@ -30,6 +30,21 @@ export function useCreateModule() {
   });
 }
 
+export function useDeleteModule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/modules/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to delete module");
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [api.modules.list.path] }),
+  });
+}
+
 export function useUserProgress() {
   return useQuery({
     queryKey: [api.progress.list.path],

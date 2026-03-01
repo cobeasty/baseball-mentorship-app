@@ -9,6 +9,8 @@ import { Loader2 } from "lucide-react";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/Landing";
 import Onboarding from "@/pages/Onboarding";
+import PendingApproval from "@/pages/PendingApproval";
+import Subscribe from "@/pages/Subscribe";
 import Dashboard from "@/pages/athlete/Dashboard";
 import Modules from "@/pages/athlete/Modules";
 import VideoSubmissions from "@/pages/athlete/VideoSubmissions";
@@ -19,9 +21,24 @@ import { AppLayout } from "@/components/layout/AppLayout";
 
 function ProtectedRouter() {
   const { user } = useAuth();
-  
+
   if (!user?.role) {
     return <Onboarding />;
+  }
+
+  if (user.role === "athlete" && user.approvalStatus === "pending") {
+    return <PendingApproval />;
+  }
+
+  if (user.role === "athlete" && user.approvalStatus === "suspended") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="max-w-md text-center">
+          <h1 className="text-3xl font-display font-bold text-white mb-4">Account Suspended</h1>
+          <p className="text-muted-foreground">Your account has been suspended. Please contact support for assistance.</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -32,22 +49,25 @@ function ProtectedRouter() {
             <Route path="/" component={Dashboard} />
             <Route path="/modules" component={Modules} />
             <Route path="/videos" component={VideoSubmissions} />
+            <Route path="/subscribe" component={Subscribe} />
             <Route path="/settings" component={Settings} />
           </>
         )}
-        
+
         {user.role === "parent" && (
           <>
             <Route path="/" component={ParentPortal} />
+            <Route path="/subscribe" component={Subscribe} />
             <Route path="/settings" component={Settings} />
           </>
         )}
-        
+
         {user.role === "admin" && (
           <>
             <Route path="/" component={AdminPortal} />
             <Route path="/videos" component={AdminPortal} />
-            <Route path="/modules" component={AdminPortal} /> {/* Simplified for MVP */}
+            <Route path="/modules" component={AdminPortal} />
+            <Route path="/settings" component={Settings} />
           </>
         )}
 

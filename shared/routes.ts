@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertModuleSchema, insertVideoSchema, insertFeedbackSchema, insertAgreementSchema, modules, videos, userProgress, videoFeedback, agreements, conversations, messages } from './schema';
+import { insertModuleSchema, insertVideoSchema, insertFeedbackSchema, insertAgreementSchema, insertAnnouncementSchema, modules, videos, userProgress, videoFeedback, agreements, conversations, messages, subscriptions, announcements } from './schema';
 import { users } from './models/auth';
 
 export const errorSchemas = {
@@ -27,7 +27,9 @@ export const api = {
         tier: z.string().optional(),
         dateOfBirth: z.string().optional(),
         parentEmail: z.string().optional(),
-        approvalStatus: z.string().optional()
+        approvalStatus: z.string().optional(),
+        firstName: z.string().optional(),
+        lastName: z.string().optional(),
       }),
       responses: {
         200: z.custom<typeof users.$inferSelect>(),
@@ -40,6 +42,28 @@ export const api = {
       responses: {
         200: z.array(z.custom<typeof users.$inferSelect>())
       }
+    },
+    suspend: {
+      method: 'POST' as const,
+      path: '/api/users/:id/suspend' as const,
+      input: z.object({ reason: z.string().optional() }),
+      responses: { 200: z.custom<typeof users.$inferSelect>() }
+    },
+    approve: {
+      method: 'POST' as const,
+      path: '/api/users/:id/approve' as const,
+      input: z.object({}),
+      responses: { 200: z.custom<typeof users.$inferSelect>() }
+    },
+    getAthletes: {
+      method: 'GET' as const,
+      path: '/api/users/athletes' as const,
+      responses: { 200: z.array(z.custom<typeof users.$inferSelect>()) }
+    },
+    agreements: {
+      method: 'GET' as const,
+      path: '/api/users/:id/agreements' as const,
+      responses: { 200: z.array(z.custom<typeof agreements.$inferSelect>()) }
     }
   },
   modules: {
@@ -53,12 +77,28 @@ export const api = {
       path: '/api/modules' as const,
       input: insertModuleSchema,
       responses: { 201: z.custom<typeof modules.$inferSelect>(), 400: errorSchemas.validation }
+    },
+    update: {
+      method: 'PUT' as const,
+      path: '/api/modules/:id' as const,
+      input: insertModuleSchema.partial(),
+      responses: { 200: z.custom<typeof modules.$inferSelect>() }
+    },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/modules/:id' as const,
+      responses: { 200: z.object({ success: z.boolean() }) }
     }
   },
   progress: {
     list: {
       method: 'GET' as const,
       path: '/api/progress' as const,
+      responses: { 200: z.array(z.custom<typeof userProgress.$inferSelect>()) }
+    },
+    listForUser: {
+      method: 'GET' as const,
+      path: '/api/progress/:userId' as const,
       responses: { 200: z.array(z.custom<typeof userProgress.$inferSelect>()) }
     },
     complete: {
@@ -108,37 +148,102 @@ export const api = {
       responses: { 201: z.custom<typeof agreements.$inferSelect>() }
     }
   },
+  subscriptions: {
+    get: {
+      method: 'GET' as const,
+      path: '/api/subscriptions/me' as const,
+      responses: { 200: z.custom<typeof subscriptions.$inferSelect>().nullable() }
+    },
+    createCheckout: {
+      method: 'POST' as const,
+      path: '/api/subscriptions/checkout' as const,
+      input: z.object({ tier: z.enum(['tier1', 'tier2', 'tier3']) }),
+      responses: { 200: z.object({ url: z.string() }) }
+    },
+    createPortal: {
+      method: 'POST' as const,
+      path: '/api/subscriptions/portal' as const,
+      input: z.object({}),
+      responses: { 200: z.object({ url: z.string() }) }
+    },
+    cancel: {
+      method: 'POST' as const,
+      path: '/api/subscriptions/cancel' as const,
+      input: z.object({}),
+      responses: { 200: z.object({ success: z.boolean() }) }
+    }
+  },
+  announcements: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/announcements' as const,
+      responses: { 200: z.array(z.custom<typeof announcements.$inferSelect>()) }
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/announcements' as const,
+      input: insertAnnouncementSchema,
+      responses: { 201: z.custom<typeof announcements.$inferSelect>() }
+    },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/announcements/:id' as const,
+      responses: { 200: z.object({ success: z.boolean() }) }
+    }
+  },
+  parentConsent: {
+    send: {
+      method: 'POST' as const,
+      path: '/api/parent-consent/send' as const,
+      input: z.object({ parentEmail: z.string().email() }),
+      responses: { 200: z.object({ success: z.boolean() }) }
+    },
+    approve: {
+      method: 'GET' as const,
+      path: '/api/parent-consent/approve' as const,
+      responses: { 200: z.object({ success: z.boolean() }) }
+    }
+  },
+  admin: {
+    metrics: {
+      method: 'GET' as const,
+      path: '/api/admin/metrics' as const,
+      responses: {
+        200: z.object({
+          totalUsers: z.number(),
+          activeAthletes: z.number(),
+          pendingApprovals: z.number(),
+          suspendedUsers: z.number(),
+          tierBreakdown: z.object({ none: z.number(), tier1: z.number(), tier2: z.number(), tier3: z.number() }),
+          totalVideos: z.number(),
+          pendingVideos: z.number(),
+          totalModules: z.number(),
+        })
+      }
+    }
+  },
   chat: {
     listConversations: {
       method: 'GET' as const,
       path: '/api/conversations' as const,
-      responses: {
-        200: z.array(z.custom<typeof conversations.$inferSelect>())
-      }
+      responses: { 200: z.array(z.custom<typeof conversations.$inferSelect>()) }
     },
     getConversation: {
       method: 'GET' as const,
       path: '/api/conversations/:id' as const,
-      responses: {
-        200: z.custom<typeof conversations.$inferSelect & { messages: (typeof messages.$inferSelect)[] }>(),
-        404: errorSchemas.notFound
-      }
+      responses: { 200: z.custom<any>(), 404: errorSchemas.notFound }
     },
     createConversation: {
       method: 'POST' as const,
       path: '/api/conversations' as const,
       input: z.object({ title: z.string().optional() }),
-      responses: {
-        201: z.custom<typeof conversations.$inferSelect>()
-      }
+      responses: { 201: z.custom<typeof conversations.$inferSelect>() }
     },
     sendMessage: {
       method: 'POST' as const,
       path: '/api/conversations/:id/messages' as const,
       input: z.object({ content: z.string() }),
-      responses: {
-        200: z.any() // SSE stream
-      }
+      responses: { 200: z.any() }
     }
   }
 };

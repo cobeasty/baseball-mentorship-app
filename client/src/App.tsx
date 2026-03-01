@@ -22,7 +22,13 @@ import { AppLayout } from "@/components/layout/AppLayout";
 function ProtectedRouter() {
   const { user } = useAuth();
 
-  if (!user?.role) {
+  // New users get role="athlete" by default before completing onboarding.
+  // Use dateOfBirth absence (for athletes) or role still being the default (not parent/admin)
+  // as the signal that onboarding hasn't been completed yet.
+  const needsOnboarding =
+    user.role !== "admin" && user.role !== "parent" && !user.dateOfBirth;
+
+  if (needsOnboarding) {
     return <Onboarding />;
   }
 

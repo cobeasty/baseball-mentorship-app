@@ -23,7 +23,10 @@ export function useCreateVideo() {
         body: JSON.stringify(data),
         credentials: "include",
       });
-      if (!res.ok) throw new Error("Failed to submit video");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ message: "Failed to submit video" }));
+        throw new Error(errData.message || "Failed to submit video");
+      }
       return api.videos.create.responses[201].parse(await res.json());
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [api.videos.list.path] }),
@@ -41,7 +44,10 @@ export function useUpdateVideoStatus() {
         body: JSON.stringify({ status }),
         credentials: "include",
       });
-      if (!res.ok) throw new Error("Failed to update status");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ message: "Failed to update status" }));
+        throw new Error(errData.message || "Failed to update status");
+      }
       return api.videos.updateStatus.responses[200].parse(await res.json());
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [api.videos.list.path] }),
@@ -72,7 +78,10 @@ export function useCreateFeedback() {
         body: JSON.stringify(data),
         credentials: "include",
       });
-      if (!res.ok) throw new Error("Failed to create feedback");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ message: "Failed to create feedback" }));
+        throw new Error(errData.message || "Failed to create feedback");
+      }
       return api.feedback.create.responses[201].parse(await res.json());
     },
     onSuccess: (_, variables) => {

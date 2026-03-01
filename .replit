@@ -39,4 +39,11 @@ args = "npm run dev"
 waitForPort = 5000
 
 [agent]
-integrations = ["javascript_log_in_with_replit:2.0.0", "javascript_openai_ai_integrations:2.0.0"]
+integrations = ["javascript_log_in_with_replit:2.0.0", "javascript_openai_ai_integrations:2.0.0", "stripe:2.0.0"]
+
+[userenv]
+
+[userenv.shared]
+STRIPE_TIER1_PRICE_ID = "price_1T5zvFPWjKFz5GQ336irv8JW"
+STRIPE_TIER2_PRICE_ID = "price_1T5zvGPWjKFz5GQ3Klf449wL"
+STRIPE_TIER3_PRICE_ID = "price_1T5zvHPWjKFz5GQ3EtriEKUr"

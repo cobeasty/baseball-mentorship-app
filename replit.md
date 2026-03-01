@@ -57,11 +57,28 @@ A legally compliant, subscription-based web app for baseball athletes ages 14–
 - `parent_consents`: parental consent tokens and approval status
 - `conversations` + `messages`: AI mentor chat history
 
+## Security Architecture
+- **Admin enforcement**: `requireAdmin` middleware on all admin endpoints — returns 403 for non-admins
+- **Self-or-admin**: `requireSelfOrAdmin` on user update, agreements, progress — only own data or admin
+- **Server-side age validation**: Onboarding enforces 14–18 age gate server-side (cannot be bypassed client-side)
+- **Role immutability**: Non-admins cannot change their own `approvalStatus` or `tier` via PUT /api/users/:id
+- **Feedback ownership**: Athletes can only view feedback on their own videos
+- **Parent portal**: Parent email query only allowed for own email (or admin)
+- **Auth upsert safety**: Email uniqueness conflict handled gracefully — won't crash on duplicate emails
+
+## Stripe Integration (stripe-replit-sync pattern)
+- Uses Replit connector API for credentials (not environment variable for secret key)
+- `server/stripeClient.ts`: Fetches Stripe credentials from Replit connector
+- `server/webhookHandlers.ts`: Processes webhooks via stripe-replit-sync + business logic
+- `server/seed-stripe.ts`: Idempotent script to create subscription products in Stripe
+- Webhook at `/api/stripe/webhook` is registered BEFORE `express.json()` (required for raw Buffer)
+- Managed webhook auto-configured by stripe-replit-sync on startup
+- stripe-replit-sync syncs all Stripe data to `stripe.*` schema tables on startup
+
 ## Environment Variables Required
 - `DATABASE_URL`: PostgreSQL connection string (auto-provisioned)
 - `SESSION_SECRET`: session encryption secret
-- `STRIPE_SECRET_KEY`: Stripe secret key
-- `STRIPE_WEBHOOK_SECRET`: Stripe webhook signing secret
-- `STRIPE_TIER1_PRICE_ID`: Stripe price ID for Tier 1
-- `STRIPE_TIER2_PRICE_ID`: Stripe price ID for Tier 2
-- `STRIPE_TIER3_PRICE_ID`: Stripe price ID for Tier 3
+- `STRIPE_TIER1_PRICE_ID`: price_1T5zvFPWjKFz5GQ336irv8JW (set)
+- `STRIPE_TIER2_PRICE_ID`: price_1T5zvGPWjKFz5GQ3Klf449wL (set)
+- `STRIPE_TIER3_PRICE_ID`: price_1T5zvHPWjKFz5GQ3EtriEKUr (set)
+- Stripe credentials: provided via Replit connector (no STRIPE_SECRET_KEY env var needed)

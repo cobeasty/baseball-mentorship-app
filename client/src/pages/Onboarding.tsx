@@ -35,8 +35,9 @@ export default function Onboarding() {
       if (role === "athlete") {
         if (!dob) return setError("Date of birth is required for athletes.");
         const age = getAge();
-        if (age < 14) return setError("This platform is strictly for athletes aged 14-18.");
-        if (age > 18) return setError("This platform is for high school athletes aged 14-18.");
+        if (age < 13) return setError("You must be at least 13 to create an account. Parental consent is required for athletes under 18.");
+        if (age < 14) return setError("This platform is for athletes ages 14–18. Access is not permitted for those under 14.");
+        if (age >= 19) return setError("This platform is for high school athletes ages 14–18.");
         if (isMinor() && !parentEmail) return setError("Parent email is required for minors.");
         if (isMinor() && !agreements.consent) return setError("Parental consent is required for minors.");
       }

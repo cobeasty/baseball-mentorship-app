@@ -16,13 +16,18 @@ class AuthStorage implements IAuthStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
+    // On conflict (same id), only update non-sensitive identity fields.
+    // We do NOT update email on conflict to prevent unique-constraint crashes
+    // when two Replit accounts share the same email address.
     const [user] = await db
       .insert(users)
       .values(userData)
       .onConflictDoUpdate({
         target: users.id,
         set: {
-          ...userData,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          profileImageUrl: userData.profileImageUrl,
           updatedAt: new Date(),
         },
       })

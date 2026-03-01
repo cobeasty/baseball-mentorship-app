@@ -1,0 +1,285 @@
+1. Project Overview
+
+I am a professional baseball player building a web-based mentorship and player development platform for athletes ages 13–18.
+
+The platform will focus primarily on:
+	•	Athlete mentorship
+	•	Mental development
+	•	Recruiting education
+	•	Leadership and discipline
+	•	Structured player growth
+
+It will also include limited video submission functionality for feedback and AI-assisted analysis.
+
+The platform must be:
+	•	Legally structured for minors (13–18 only)
+	•	Parent-consent compliant
+	•	Secure with video storage
+	•	Scalable
+	•	Built first as a web app (mobile responsive)
+
+This is Phase 1 (MVP) with room for future expansion into a full mobile app.
+
+⸻
+
+2. Target Users
+
+Primary Users:
+	•	Baseball athletes ages 13–18
+
+Secondary Users:
+	•	Parents (required for account approval and payment)
+
+⸻
+
+3. Age Restrictions & Compliance Requirements
+
+The platform must:
+	•	Restrict access to users under 13 (hard block at signup)
+	•	Require date of birth field at registration
+	•	Require parent/guardian email for all users under 18
+	•	Send automated parental consent email
+	•	Require parent agreement to:
+	•	Terms of Service
+	•	Liability Waiver
+	•	Privacy Policy
+
+The system must store digital acceptance records.
+
+⸻
+
+4. Core Features (MVP Build)
+
+A. User Registration & Authentication
+	•	Email + password login
+	•	DOB verification
+	•	Parent email verification workflow
+	•	User dashboard after approval
+	•	Stripe subscription integration
+	•	Account status (Active / Pending Parent Approval / Suspended)
+
+⸻
+
+B. Subscription & Payments
+	•	Integrated with Stripe (my own Stripe account)
+	•	Monthly subscription tiers:
+	•	Tier 1 – Mentorship Access
+	•	Tier 2 – Mentorship + Video Feedback Credits
+	•	Tier 3 – Premium Access (Live sessions + priority review)
+	•	Automatic recurring billing
+	•	Subscription management panel
+	•	Cancel / upgrade functionality
+
+⸻
+
+C. Athlete Dashboard
+
+Upon login, athlete sees:
+	1.	Progress Overview
+	•	Modules completed
+	•	Video submissions remaining (if applicable)
+	•	Current development level
+	2.	Weekly Mentorship Content
+	•	Video lessons
+	•	Downloadable resources
+	•	Assignments/reflection prompts
+	3.	Video Submission Portal (Tier-based access)
+	•	Upload swing or training video
+	•	Max file size control
+	•	Upload limit based on subscription tier
+	•	Status tracker (Submitted / Under Review / Feedback Posted)
+	4.	Messaging / Announcements Section
+	•	Platform updates
+	•	Weekly insights from me
+
+⸻
+
+D. Content Delivery System
+
+Structured development curriculum divided into:
+
+Level 1 – Foundations
+Level 2 – Competitive Mindset
+Level 3 – Recruiting Blueprint
+
+Each level contains:
+	•	Video modules
+	•	Progress tracking
+	•	Locked progression until previous module complete
+
+Admin must be able to:
+	•	Upload new videos
+	•	Add PDFs
+	•	Schedule content release
+	•	Edit curriculum
+
+⸻
+
+E. Video Feedback System
+
+Athlete uploads video.
+
+Admin (me) can:
+	•	View video
+	•	Leave written feedback
+	•	Upload response video
+	•	Mark as completed
+
+Optional (Phase 2):
+	•	AI-assisted mechanical tagging
+	•	Auto-analysis summary
+	•	Highlight key frames
+
+For MVP:
+Manual feedback system is acceptable.
+
+⸻
+
+F. Parent Portal
+
+Parents should have:
+	•	Access to athlete progress
+	•	Payment management
+	•	View completed modules
+	•	View feedback history
+	•	Download waiver/consent copies
+
+Parents cannot edit athlete content but can manage account.
+
+⸻
+
+G. Admin Dashboard (Owner Panel)
+
+Full admin backend must include:
+	•	User management
+	•	Subscription management
+	•	Video review dashboard
+	•	Content upload portal
+	•	Metrics dashboard:
+	•	Active users
+	•	Churn rate
+	•	Revenue
+	•	Engagement data
+	•	Ability to suspend accounts
+	•	Ability to manually adjust subscription status
+
+⸻
+
+5. Legal Infrastructure Built Into System
+
+The system must include:
+	•	Required acceptance of:
+	•	Terms of Service
+	•	Privacy Policy
+	•	Liability Waiver
+	•	Parental Consent
+	•	Timestamped digital signature storage
+	•	Downloadable record for admin
+
+⸻
+
+6. Security Requirements
+	•	Secure cloud video storage
+	•	Role-based permissions (Athlete / Parent / Admin)
+	•	SSL encryption
+	•	Secure file uploads
+	•	No public access to private videos
+
+⸻
+
+7. Messaging & Community (MVP Level)
+
+Basic version:
+	•	Announcement board
+	•	Comment-enabled under modules
+	•	Controlled interaction (no athlete-to-athlete private messaging initially)
+
+Reason:
+Reduce moderation and liability risk.
+
+⸻
+
+8. Future Phase 2 Features (Not Required for MVP)
+	•	AI mechanical swing analysis
+	•	AI progress tracking insights
+	•	Leaderboards
+	•	Mobile native app
+	•	Live group session integration
+	•	Assistant coach roles
+	•	Gamification system
+
+⸻
+
+9. Design Direction
+
+Brand tone:
+	•	Professional
+	•	Clean
+	•	Elite
+	•	Athlete-focused
+	•	Not childish
+
+Visual:
+	•	Dark mode option
+	•	Clean dashboard layout
+	•	Performance-oriented aesthetic
+
+⸻
+
+10. Scalability Requirements
+
+Build database structure so that:
+	•	Thousands of users can be supported
+	•	Content can expand
+	•	Coaches can be added later
+	•	AI API integrations can be added later
+
+Must not be a rigid template build.
+
+⸻
+
+11. Deliverables
+
+Bubble developer must deliver:
+	•	Fully functional web app
+	•	Stripe integration
+	•	Parent approval workflow
+	•	Admin dashboard
+	•	Secure video upload system
+	•	Legal agreement acceptance flow
+	•	Mobile-responsive interface
+	•	Documentation of backend structure
+
+⸻
+
+12. Objective of MVP
+
+The goal of this build is:
+
+To validate a structured athlete mentorship platform with paying users before investing in a full native mobile application.
+
+The system should prioritize:
+	•	Simplicity
+	•	Stability
+	•	Security
+	•	Legal protection
+	•	Scalability
+
+Not over-engineered complexity.
+
+⸻
+
+Strategic Note for Developer
+
+This is not a generic coaching platform.
+
+This is a mentorship-driven, development-focused athlete ecosystem led by a professional baseball player.
+
+The structure must reflect long-term brand expansion.
+
+⸻
+
+If you’d like, next I can:
+	•	Turn this into a pitch deck outline
+	•	Help you price your tiers strategically
+	•	Or tell you what this build realistically costs in Bubble right now

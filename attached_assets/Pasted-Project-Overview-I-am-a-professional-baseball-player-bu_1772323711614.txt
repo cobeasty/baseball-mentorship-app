@@ -1,0 +1,75 @@
+Project Overview
+
+I am a professional baseball player building a web-based mentorship and player development platform for athletes ages 13–18. The focus is structured mentorship (mindset, leadership, recruiting education, discipline) with limited video submission for feedback. This is an MVP built in Bubble, mobile-responsive, scalable, and legally structured for minors.
+
+Compliance & Age Restrictions
+	•	Strictly 13–18 only (block under 13 at signup)
+	•	Date of birth required
+	•	Parent email required for all minors
+	•	Automated parental consent workflow
+	•	Digital acceptance storage for: Terms of Service, Privacy Policy, Liability Waiver, Parental Consent
+	•	Timestamped agreement records
+
+Core Features
+	1.	User Accounts
+
+	•	Email/password login
+	•	Parent approval status (Pending/Active/Suspended)
+	•	Role-based access (Athlete, Parent, Admin)
+
+	2.	Subscriptions (Stripe Integration – my account)
+
+	•	Tier 1: Mentorship access
+	•	Tier 2: Mentorship + video feedback credits
+	•	Tier 3: Premium (live sessions + priority review)
+	•	Recurring billing, upgrade/downgrade, cancel
+
+	3.	Athlete Dashboard
+
+	•	Progress tracker (modules completed, level status)
+	•	Weekly mentorship content (videos + PDFs)
+	•	Structured curriculum (Level 1 Foundations, Level 2 Competitive Mindset, Level 3 Recruiting Blueprint)
+	•	Locked progression until completion
+	•	Video submission portal (tier-based upload limits, status tracking)
+	•	Announcement board
+
+	4.	Video Feedback System
+
+	•	Secure upload
+	•	Admin review panel
+	•	Written or video feedback response
+	•	Mark completed
+(MVP manual review; AI integration later)
+
+	5.	Parent Portal
+
+	•	View athlete progress
+	•	Payment management
+	•	View feedback history
+	•	Download agreements
+
+	6.	Admin Dashboard
+
+	•	User management
+	•	Subscription management
+	•	Content upload & scheduling
+	•	Video review queue
+	•	Metrics (active users, revenue, engagement)
+	•	Account suspension control
+
+Security Requirements
+	•	Secure cloud storage
+	•	SSL encryption
+	•	Private video access (no public links)
+	•	Role-based permissions
+
+Community (MVP)
+	•	Announcement + module comments only
+	•	No athlete-to-athlete private messaging (reduce liability)
+
+Scalability
+	•	Database structured for thousands of users
+	•	Future expansion for AI analysis, assistant coaches, gamification, and mobile app
+
+Objective
+Launch a legally compliant, secure, scalable MVP to validate paid athlete mentorship before investing in a full custom mobile app. Focus on stability, protection, and structured development — not overbuilt complexity.

@@ -14,34 +14,47 @@ export default function Onboarding() {
   const [role, setRole] = useState<"athlete" | "parent" | null>(null);
   const [dob, setDob] = useState("");
   const [parentEmail, setParentEmail] = useState("");
-  const [agreements, setAgreements] = useState({ tos: false, privacy: false, liability: false });
+  const [agreements, setAgreements] = useState({ tos: false, privacy: false, liability: false, consent: false });
   const [error, setError] = useState("");
 
+  const getAge = () => {
+    if (!dob) return 0;
+    return (new Date().getTime() - new Date(dob).getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+  };
+
   const isMinor = () => {
-    if (!dob) return false;
-    const age = (new Date().getTime() - new Date(dob).getTime()) / (1000 * 60 * 60 * 24 * 365.25);
-    return age < 18;
+    const age = getAge();
+    return age < 18 && age >= 14;
   };
 
   const handleComplete = async () => {
     try {
       setError("");
       if (!role) return setError("Please select a role.");
-      if (!agreements.tos || !agreements.privacy || !agreements.liability) {
-        return setError("You must accept all agreements to continue.");
-      }
       
       if (role === "athlete") {
         if (!dob) return setError("Date of birth is required for athletes.");
+        const age = getAge();
+        if (age < 14) return setError("This platform is strictly for athletes aged 14-18.");
+        if (age > 18) return setError("This platform is for high school athletes aged 14-18.");
         if (isMinor() && !parentEmail) return setError("Parent email is required for minors.");
+        if (isMinor() && !agreements.consent) return setError("Parental consent is required for minors.");
+      }
+
+      if (!agreements.tos || !agreements.privacy || !agreements.liability) {
+        return setError("You must accept all agreements to continue.");
       }
 
       // Record agreements
-      await Promise.all([
+      const agreementPromises = [
         createAgreement.mutateAsync("tos"),
         createAgreement.mutateAsync("privacy"),
         createAgreement.mutateAsync("liability"),
-      ]);
+      ];
+      if (role === "athlete" && isMinor()) {
+        agreementPromises.push(createAgreement.mutateAsync("consent"));
+      }
+      await Promise.all(agreementPromises);
 
       // Update user profile
       await updateUser.mutateAsync({
@@ -124,7 +137,8 @@ export default function Onboarding() {
                 {[
                   { key: 'tos', label: 'I agree to the Terms of Service' },
                   { key: 'privacy', label: 'I agree to the Privacy Policy' },
-                  { key: 'liability', label: 'I accept the Liability Waiver' }
+                  { key: 'liability', label: 'I accept the Liability Waiver' },
+                  ...(role === "athlete" && isMinor() ? [{ key: 'consent', label: 'I have received parental consent to join' }] : [])
                 ].map(({ key, label }) => (
                   <label key={key} className="flex items-center gap-3 cursor-pointer group">
                     <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${agreements[key as keyof typeof agreements] ? 'bg-primary border-primary' : 'border-white/20 group-hover:border-primary/50'}`}>

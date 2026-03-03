@@ -79,10 +79,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <div className={`mx-2 px-3 py-2 rounded-lg border text-xs font-display font-bold uppercase tracking-wider flex items-center justify-between ${tierBadge.color}`}>
                 <span>{tierBadge.label}</span>
                 {tier === "none" && (
-                  <Link href="/subscribe">
+                  <Link href="/get-started">
                     <button className="flex items-center gap-1 text-primary hover:text-primary/80 transition-colors" data-testid="button-sidebar-upgrade">
                       <Zap className="w-3 h-3" />
-                      <span className="text-xs">Upgrade</span>
+                      <span className="text-xs">Get Started</span>
                     </button>
                   </Link>
                 )}
@@ -114,7 +114,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="h-16 flex items-center px-8 border-b border-white/5 bg-background/50 backdrop-blur">
           <h2 className="font-display font-bold uppercase tracking-wide text-lg text-white">
-            {navItems.find((i) => i.path === location)?.name || "Mentorship Platform"}
+            {location === "/get-started"
+              ? "Get Started"
+              : navItems.find((i) => i.path === location)?.name || "Mentorship Platform"}
           </h2>
         </header>
         <div className="flex-1 overflow-auto p-4 md:p-8">

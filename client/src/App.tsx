@@ -12,6 +12,7 @@ import Onboarding from "@/pages/Onboarding";
 import PendingApproval from "@/pages/PendingApproval";
 import Subscribe from "@/pages/Subscribe";
 import Dashboard from "@/pages/athlete/Dashboard";
+import GetStarted from "@/pages/athlete/GetStarted";
 import Modules from "@/pages/athlete/Modules";
 import VideoSubmissions from "@/pages/athlete/VideoSubmissions";
 import AdminPortal from "@/pages/AdminPortal";
@@ -53,6 +54,7 @@ function ProtectedRouter() {
         {user.role === "athlete" && (
           <>
             <Route path="/" component={Dashboard} />
+            <Route path="/get-started" component={GetStarted} />
             <Route path="/modules" component={Modules} />
             <Route path="/videos" component={VideoSubmissions} />
             <Route path="/subscribe" component={Subscribe} />

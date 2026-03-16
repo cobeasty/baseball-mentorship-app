@@ -1,14 +1,11 @@
 import { useState } from "react";
-import { Card, Button, Badge } from "@/components/ui";
+import { Button, Badge } from "@/components/ui";
 import { useModules, useUserProgress, useCompleteModule } from "@/hooks/use-modules";
 import { VideoEmbed } from "@/components/VideoEmbed";
 import { CheckCircle2, Circle, Lock, ChevronDown, ChevronUp, FileText, Play } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from "clsx";
-import { useSubscription } from "@/hooks/use-subscription";
 import { useAuth } from "@/hooks/use-auth";
 import { Link } from "wouter";
-import { Button as Btn } from "@/components/ui";
 
 const LEVEL_NAMES = ["Foundations", "Competitive Mindset", "Recruiting Blueprint"];
 
@@ -113,140 +110,135 @@ export default function Modules() {
                   const isOpen = openId === mod.id;
 
                   return (
-                    <div key={mod.id} data-testid={`module-card-${mod.id}`}>
-                      {/* Collapsed header row */}
-                      <Card
-                        className={clsx(
-                          "cursor-pointer transition-colors select-none",
-                          isOpen && "border-primary/40 rounded-b-none",
-                          isCompleted && "border-green-500/20"
-                        )}
+                    <div
+                      key={mod.id}
+                      data-testid={`module-card-${mod.id}`}
+                      className={clsx(
+                        "rounded-xl border transition-colors",
+                        isOpen
+                          ? "border-primary/40"
+                          : isCompleted
+                          ? "border-green-500/20"
+                          : "border-white/10",
+                        "bg-card"
+                      )}
+                    >
+                      {/* Clickable header row */}
+                      <button
+                        type="button"
+                        className="w-full text-left p-4 flex items-center gap-4 cursor-pointer select-none"
                         onClick={() => setOpenId(isOpen ? null : mod.id)}
+                        data-testid={`button-expand-${mod.id}`}
                       >
-                        <div className="flex items-center gap-4">
-                          <div className="shrink-0">
+                        <div className="shrink-0">
+                          {isCompleted ? (
+                            <CheckCircle2 className="w-6 h-6 text-green-400" />
+                          ) : (
+                            <Circle className="w-6 h-6 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-bold text-white text-base">{mod.title}</h3>
+                          {mod.description && (
+                            <p className="text-sm text-muted-foreground truncate">{mod.description}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          {mod.videoUrl && (
+                            <span className="hidden sm:flex items-center gap-1 text-xs text-blue-400">
+                              <Play className="w-3 h-3" /> Video
+                            </span>
+                          )}
+                          {mod.pdfUrl && (
+                            <span className="hidden sm:flex items-center gap-1 text-xs text-green-400">
+                              <FileText className="w-3 h-3" /> PDF
+                            </span>
+                          )}
+                          {isCompleted && <Badge variant="success">Done</Badge>}
+                          {isOpen ? (
+                            <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                          ) : (
+                            <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                          )}
+                        </div>
+                      </button>
+
+                      {/* Expanded content */}
+                      {isOpen && (
+                        <div className="border-t border-primary/20 p-6 space-y-6">
+                          {/* Video player */}
+                          {mod.videoUrl && (
+                            <div>
+                              <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                                <Play className="w-3 h-3" /> Training Video
+                              </p>
+                              <VideoEmbed url={mod.videoUrl} title={mod.title} />
+                            </div>
+                          )}
+
+                          {/* Lesson notes */}
+                          {mod.content && (
+                            <div>
+                              <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                                <FileText className="w-3 h-3" /> Lesson Notes
+                              </p>
+                              <div className="bg-white/5 rounded-lg p-4 border border-white/5">
+                                <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                                  {mod.content}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* PDF link */}
+                          {mod.pdfUrl && (
+                            <div>
+                              <a
+                                href={mod.pdfUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-2 text-sm text-green-400 hover:text-green-300 transition-colors"
+                                data-testid={`link-pdf-${mod.id}`}
+                              >
+                                <FileText className="w-4 h-4" />
+                                Download Study Sheet (PDF)
+                              </a>
+                            </div>
+                          )}
+
+                          {/* No content placeholder */}
+                          {!mod.videoUrl && !mod.content && !mod.pdfUrl && (
+                            <div className="text-center py-8 text-muted-foreground">
+                              <Play className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                              <p className="text-sm">Content coming soon. Check back shortly.</p>
+                            </div>
+                          )}
+
+                          {/* Mark complete button */}
+                          <div className="pt-2 border-t border-white/5 flex items-center justify-between gap-4">
+                            <p className="text-xs text-muted-foreground">
+                              {isCompleted
+                                ? "You have completed this module."
+                                : "Watch the video and review the notes, then mark this module complete."}
+                            </p>
                             {isCompleted ? (
-                              <CheckCircle2 className="w-6 h-6 text-green-400" />
+                              <Badge variant="success" className="shrink-0">
+                                <CheckCircle2 className="w-3 h-3 mr-1" /> Complete
+                              </Badge>
                             ) : (
-                              <Circle className="w-6 h-6 text-muted-foreground" />
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-bold text-white text-base">{mod.title}</h3>
-                            {mod.description && (
-                              <p className="text-sm text-muted-foreground truncate">{mod.description}</p>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-3 shrink-0">
-                            {mod.videoUrl && (
-                              <span className="hidden sm:flex items-center gap-1 text-xs text-blue-400">
-                                <Play className="w-3 h-3" /> Video
-                              </span>
-                            )}
-                            {mod.pdfUrl && (
-                              <span className="hidden sm:flex items-center gap-1 text-xs text-green-400">
-                                <FileText className="w-3 h-3" /> PDF
-                              </span>
-                            )}
-                            {isCompleted && <Badge variant="success">Done</Badge>}
-                            {isOpen ? (
-                              <ChevronUp className="w-5 h-5 text-muted-foreground" />
-                            ) : (
-                              <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                              <Button
+                                size="sm"
+                                className="shrink-0"
+                                onClick={() => completeModule.mutate(mod.id)}
+                                disabled={completeModule.isPending}
+                                data-testid={`button-complete-${mod.id}`}
+                              >
+                                {completeModule.isPending ? "Saving…" : "Mark Complete"}
+                              </Button>
                             )}
                           </div>
                         </div>
-                      </Card>
-
-                      {/* Expanded content */}
-                      <AnimatePresence initial={false}>
-                        {isOpen && (
-                          <motion.div
-                            key="content"
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.25, ease: "easeInOut" }}
-                            className="overflow-hidden"
-                          >
-                            <div className="border border-t-0 border-primary/40 rounded-b-xl bg-card/60 p-6 space-y-6">
-                              {/* Video player */}
-                              {mod.videoUrl && (
-                                <div>
-                                  <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                                    <Play className="w-3 h-3" /> Training Video
-                                  </p>
-                                  <VideoEmbed url={mod.videoUrl} title={mod.title} />
-                                </div>
-                              )}
-
-                              {/* Lesson notes */}
-                              {mod.content && (
-                                <div>
-                                  <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                                    <FileText className="w-3 h-3" /> Lesson Notes
-                                  </p>
-                                  <div className="bg-white/5 rounded-lg p-4 border border-white/5">
-                                    <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                                      {mod.content}
-                                    </p>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* PDF link */}
-                              {mod.pdfUrl && (
-                                <div>
-                                  <a
-                                    href={mod.pdfUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="inline-flex items-center gap-2 text-sm text-green-400 hover:text-green-300 transition-colors"
-                                    data-testid={`link-pdf-${mod.id}`}
-                                  >
-                                    <FileText className="w-4 h-4" />
-                                    Download Study Sheet (PDF)
-                                  </a>
-                                </div>
-                              )}
-
-                              {/* No content placeholder */}
-                              {!mod.videoUrl && !mod.content && !mod.pdfUrl && (
-                                <div className="text-center py-8 text-muted-foreground">
-                                  <Play className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                                  <p className="text-sm">Content coming soon. Check back shortly.</p>
-                                </div>
-                              )}
-
-                              {/* Mark complete button */}
-                              <div className="pt-2 border-t border-white/5 flex items-center justify-between">
-                                <p className="text-xs text-muted-foreground">
-                                  {isCompleted
-                                    ? "You have completed this module."
-                                    : "Watch the video and review the notes, then mark this module complete."}
-                                </p>
-                                {isCompleted ? (
-                                  <Badge variant="success" className="ml-4">
-                                    <CheckCircle2 className="w-3 h-3 mr-1" /> Complete
-                                  </Badge>
-                                ) : (
-                                  <Button
-                                    size="sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      completeModule.mutate(mod.id);
-                                    }}
-                                    disabled={completeModule.isPending}
-                                    data-testid={`button-complete-${mod.id}`}
-                                  >
-                                    {completeModule.isPending ? "Saving…" : "Mark Complete"}
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                      )}
                     </div>
                   );
                 })}

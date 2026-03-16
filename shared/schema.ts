@@ -10,6 +10,7 @@ export const modules = pgTable("modules", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description"),
+  content: text("content"), // coach lesson notes shown below the video
   level: integer("level").notNull(),
   orderIndex: integer("order_index").notNull(),
   videoUrl: text("video_url"),

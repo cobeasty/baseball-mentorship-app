@@ -203,6 +203,27 @@ export async function registerRoutes(
     }
   );
 
+  // Update module — admin only
+  app.put(
+    "/api/modules/:id",
+    isAuthenticated,
+    requireAdmin,
+    async (req: any, res) => {
+      try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id))
+          return res.status(400).json({ message: "Invalid module ID" });
+        const input = api.modules.update.input.parse(req.body);
+        const mod = await storage.updateModule(id, input);
+        res.json(mod);
+      } catch (err) {
+        if (err instanceof z.ZodError)
+          return res.status(400).json({ message: err.errors[0].message });
+        res.status(400).json({ message: "Failed to update module" });
+      }
+    }
+  );
+
   // Delete module — admin only
   app.delete(
     "/api/modules/:id",

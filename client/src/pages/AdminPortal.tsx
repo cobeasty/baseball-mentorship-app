@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, type ChangeEvent } from "react";
 import { Card, Button, Badge, Label, Input } from "@/components/ui";
 import { useVideos, useUpdateVideoStatus, useCreateFeedback } from "@/hooks/use-videos";
 import { useUsersList, useUpdateUser } from "@/hooks/use-users";
-import { useModules, useCreateModule, useDeleteModule } from "@/hooks/use-modules";
+import { useModules, useCreateModule, useUpdateModule, useDeleteModule } from "@/hooks/use-modules";
 import { useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement } from "@/hooks/use-announcements";
 import { useAdminMetrics } from "@/hooks/use-admin";
 import { useQuery } from "@tanstack/react-query";
@@ -284,21 +284,97 @@ function VideosTab() {
   );
 }
 
+const EMPTY_FORM = { title: "", description: "", content: "", level: 1, orderIndex: 1, videoUrl: "", pdfUrl: "" };
+
+function ModuleEditForm({
+  initial,
+  onSave,
+  onCancel,
+  isPending,
+  isCreate,
+}: {
+  initial: typeof EMPTY_FORM;
+  onSave: (v: typeof EMPTY_FORM) => void;
+  onCancel: () => void;
+  isPending: boolean;
+  isCreate?: boolean;
+}) {
+  const [form, setForm] = useState(initial);
+  const set = (field: string) => (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm(p => ({ ...p, [field]: e.target.value }));
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label>Title</Label>
+          <Input value={form.title} onChange={set("title")} placeholder="Module title" data-testid="input-module-title" />
+        </div>
+        <div>
+          <Label>Level (1–3)</Label>
+          <Input type="number" min={1} max={3} value={form.level} onChange={e => setForm(p => ({ ...p, level: parseInt(e.target.value) }))} data-testid="input-module-level" />
+        </div>
+        <div>
+          <Label>Order Index</Label>
+          <Input type="number" value={form.orderIndex} onChange={e => setForm(p => ({ ...p, orderIndex: parseInt(e.target.value) }))} data-testid="input-module-order" />
+        </div>
+        <div>
+          <Label>Description (short)</Label>
+          <Input value={form.description} onChange={set("description")} placeholder="One-line description" data-testid="input-module-description" />
+        </div>
+        <div>
+          <Label>Video URL <span className="text-muted-foreground">(YouTube, Vimeo, or .mp4)</span></Label>
+          <Input value={form.videoUrl} onChange={set("videoUrl")} placeholder="https://youtube.com/watch?v=..." data-testid="input-module-video" />
+        </div>
+        <div>
+          <Label>PDF URL <span className="text-muted-foreground">(optional)</span></Label>
+          <Input value={form.pdfUrl} onChange={set("pdfUrl")} placeholder="https://..." data-testid="input-module-pdf" />
+        </div>
+      </div>
+      <div>
+        <Label>Lesson Notes <span className="text-muted-foreground">(shown below the video to athletes)</span></Label>
+        <textarea
+          className="w-full bg-black/40 border border-white/10 rounded-md p-3 text-sm text-white mt-1 resize-none focus:outline-none focus:border-primary/50"
+          rows={5}
+          value={form.content}
+          onChange={set("content")}
+          placeholder="Add coaching notes, key points, drill instructions…"
+          data-testid="input-module-content"
+        />
+      </div>
+      <div className="flex gap-3">
+        <Button onClick={() => onSave(form)} isLoading={isPending} data-testid={isCreate ? "button-create-module" : "button-save-module"}>
+          {isCreate ? "Create Module" : "Save Changes"}
+        </Button>
+        <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+      </div>
+    </div>
+  );
+}
+
 function ModulesTab() {
   const { data: modules, isLoading } = useModules();
   const createModule = useCreateModule();
+  const updateModule = useUpdateModule();
   const deleteModule = useDeleteModule();
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title: "", description: "", level: 1, orderIndex: 1, videoUrl: "", pdfUrl: "" });
+  const [editingId, setEditingId] = useState<number | null>(null);
   const { toast } = useToast();
 
-  const handleCreate = async () => {
+  const handleCreate = async (form: typeof EMPTY_FORM) => {
     try {
       await createModule.mutateAsync(form);
       setShowForm(false);
-      setForm({ title: "", description: "", level: 1, orderIndex: 1, videoUrl: "", pdfUrl: "" });
       toast({ title: "Module created" });
     } catch { toast({ title: "Error creating module", variant: "destructive" }); }
+  };
+
+  const handleUpdate = async (id: number, form: typeof EMPTY_FORM) => {
+    try {
+      await updateModule.mutateAsync({ id, data: form });
+      setEditingId(null);
+      toast({ title: "Module saved" });
+    } catch { toast({ title: "Error saving module", variant: "destructive" }); }
   };
 
   if (isLoading) return <div className="text-muted-foreground p-8 text-center">Loading modules...</div>;
@@ -306,8 +382,10 @@ function ModulesTab() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h3 className="font-display font-bold uppercase tracking-wider text-white">Curriculum ({modules?.length || 0} modules)</h3>
-        <Button size="sm" onClick={() => setShowForm(!showForm)} data-testid="button-add-module">
+        <h3 className="font-display font-bold uppercase tracking-wider text-white">
+          Curriculum ({modules?.length || 0} modules)
+        </h3>
+        <Button size="sm" onClick={() => { setShowForm(!showForm); setEditingId(null); }} data-testid="button-add-module">
           <Plus className="w-4 h-4 mr-2" /> Add Module
         </Button>
       </div>
@@ -315,40 +393,17 @@ function ModulesTab() {
       {showForm && (
         <Card className="border-primary/30">
           <h4 className="font-display font-bold uppercase tracking-wider text-white mb-4">New Module</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label>Title</Label>
-              <Input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Module title" data-testid="input-module-title" />
-            </div>
-            <div>
-              <Label>Level (1-3)</Label>
-              <Input type="number" min={1} max={3} value={form.level} onChange={e => setForm(p => ({ ...p, level: parseInt(e.target.value) }))} data-testid="input-module-level" />
-            </div>
-            <div>
-              <Label>Order Index</Label>
-              <Input type="number" value={form.orderIndex} onChange={e => setForm(p => ({ ...p, orderIndex: parseInt(e.target.value) }))} data-testid="input-module-order" />
-            </div>
-            <div>
-              <Label>Video URL (optional)</Label>
-              <Input value={form.videoUrl} onChange={e => setForm(p => ({ ...p, videoUrl: e.target.value }))} placeholder="https://..." data-testid="input-module-video" />
-            </div>
-            <div>
-              <Label>PDF URL (optional)</Label>
-              <Input value={form.pdfUrl} onChange={e => setForm(p => ({ ...p, pdfUrl: e.target.value }))} placeholder="https://..." data-testid="input-module-pdf" />
-            </div>
-            <div>
-              <Label>Description</Label>
-              <Input value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} placeholder="Brief description" data-testid="input-module-description" />
-            </div>
-          </div>
-          <div className="flex gap-3 mt-4">
-            <Button onClick={handleCreate} isLoading={createModule.isPending} data-testid="button-create-module">Create Module</Button>
-            <Button variant="ghost" onClick={() => setShowForm(false)}>Cancel</Button>
-          </div>
+          <ModuleEditForm
+            initial={EMPTY_FORM}
+            onSave={handleCreate}
+            onCancel={() => setShowForm(false)}
+            isPending={createModule.isPending}
+            isCreate
+          />
         </Card>
       )}
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {[1, 2, 3].map(level => (
           <Card key={level}>
             <h4 className="font-display font-bold uppercase tracking-wider text-muted-foreground mb-4 text-xs">
@@ -356,27 +411,62 @@ function ModulesTab() {
             </h4>
             <div className="space-y-2">
               {modules?.filter(m => m.level === level).map(m => (
-                <div key={m.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg" data-testid={`card-module-${m.id}`}>
-                  <div>
-                    <p className="font-medium text-white">{m.title}</p>
-                    {m.description && <p className="text-xs text-muted-foreground mt-0.5">{m.description}</p>}
-                    <div className="flex gap-2 mt-1">
-                      {m.videoUrl && <span className="text-xs text-blue-400">Video</span>}
-                      {m.pdfUrl && <span className="text-xs text-green-400">PDF</span>}
+                <div key={m.id} data-testid={`card-module-${m.id}`}>
+                  {editingId === m.id ? (
+                    <div className="p-4 bg-white/5 rounded-lg border border-primary/30">
+                      <p className="text-xs text-primary uppercase tracking-widest font-display mb-4">
+                        Editing: {m.title}
+                      </p>
+                      <ModuleEditForm
+                        initial={{
+                          title: m.title,
+                          description: m.description || "",
+                          content: m.content || "",
+                          level: m.level,
+                          orderIndex: m.orderIndex,
+                          videoUrl: m.videoUrl || "",
+                          pdfUrl: m.pdfUrl || "",
+                        }}
+                        onSave={(form) => handleUpdate(m.id, form)}
+                        onCancel={() => setEditingId(null)}
+                        isPending={updateModule.isPending}
+                      />
                     </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => deleteModule.mutate(m.id)}
-                    data-testid={`button-delete-module-${m.id}`}
-                  >
-                    <Trash2 className="w-4 h-4 text-red-400" />
-                  </Button>
+                  ) : (
+                    <div className="flex items-start justify-between p-3 bg-white/5 rounded-lg hover:bg-white/8 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-white">{m.title}</p>
+                        {m.description && <p className="text-xs text-muted-foreground mt-0.5">{m.description}</p>}
+                        <div className="flex gap-3 mt-1.5">
+                          {m.videoUrl && <span className="text-xs text-blue-400 flex items-center gap-1">▶ Video</span>}
+                          {m.pdfUrl && <span className="text-xs text-green-400 flex items-center gap-1">PDF</span>}
+                          {m.content && <span className="text-xs text-yellow-400">Notes</span>}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 shrink-0 ml-4">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => { setEditingId(m.id); setShowForm(false); }}
+                          data-testid={`button-edit-module-${m.id}`}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => deleteModule.mutate(m.id)}
+                          data-testid={`button-delete-module-${m.id}`}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-400" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
               {!modules?.filter(m => m.level === level).length && (
-                <p className="text-xs text-muted-foreground">No modules for this level</p>
+                <p className="text-xs text-muted-foreground">No modules for this level yet.</p>
               )}
             </div>
           </Card>

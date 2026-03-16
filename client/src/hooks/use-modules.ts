@@ -30,6 +30,23 @@ export function useCreateModule() {
   });
 }
 
+export function useUpdateModule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Partial<import("@shared/schema").CreateModuleRequest> }) => {
+      const res = await fetch(`/api/modules/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to update module");
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [api.modules.list.path] }),
+  });
+}
+
 export function useDeleteModule() {
   const queryClient = useQueryClient();
   return useMutation({

@@ -1,12 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, buildUrl } from "@shared/routes";
 import { type CreateVideoRequest, type CreateFeedbackRequest } from "@shared/schema";
+import { authFetch } from "@/lib/queryClient";
 
 export function useVideos() {
   return useQuery({
     queryKey: [api.videos.list.path],
     queryFn: async () => {
-      const res = await fetch(api.videos.list.path, { credentials: "include" });
+      const res = await authFetch(api.videos.list.path);
       if (!res.ok) throw new Error("Failed to fetch videos");
       return api.videos.list.responses[200].parse(await res.json());
     },
@@ -17,11 +18,10 @@ export function useCreateVideo() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: CreateVideoRequest) => {
-      const res = await fetch(api.videos.create.path, {
+      const res = await authFetch(api.videos.create.path, {
         method: api.videos.create.method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
-        credentials: "include",
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({ message: "Failed to submit video" }));
@@ -38,11 +38,10 @@ export function useUpdateVideoStatus() {
   return useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
       const url = buildUrl(api.videos.updateStatus.path, { id });
-      const res = await fetch(url, {
+      const res = await authFetch(url, {
         method: api.videos.updateStatus.method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
-        credentials: "include",
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({ message: "Failed to update status" }));
@@ -60,7 +59,7 @@ export function useVideoFeedback(videoId: number | null) {
     queryFn: async () => {
       if (!videoId) return [];
       const url = buildUrl(api.feedback.list.path, { videoId });
-      const res = await fetch(url, { credentials: "include" });
+      const res = await authFetch(url);
       if (!res.ok) throw new Error("Failed to fetch feedback");
       return api.feedback.list.responses[200].parse(await res.json());
     },
@@ -72,11 +71,10 @@ export function useCreateFeedback() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: CreateFeedbackRequest) => {
-      const res = await fetch(api.feedback.create.path, {
+      const res = await authFetch(api.feedback.create.path, {
         method: api.feedback.create.method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
-        credentials: "include",
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({ message: "Failed to create feedback" }));

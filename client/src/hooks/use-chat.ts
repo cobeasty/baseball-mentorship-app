@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, buildUrl } from "@shared/routes";
+import { authFetch } from "@/lib/queryClient";
 
 export function useChat(conversationId?: number) {
   const queryClient = useQueryClient();
@@ -11,7 +12,7 @@ export function useChat(conversationId?: number) {
     queryKey: [buildUrl(api.chat.getConversation.path, { id: conversationId || 0 })],
     queryFn: async () => {
       if (!conversationId) return null;
-      const res = await fetch(buildUrl(api.chat.getConversation.path, { id: conversationId }));
+      const res = await authFetch(buildUrl(api.chat.getConversation.path, { id: conversationId }));
       if (!res.ok) throw new Error("Failed to fetch conversation");
       return res.json();
     },
@@ -21,11 +22,11 @@ export function useChat(conversationId?: number) {
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
       if (!conversationId) throw new Error("No conversation ID");
-      
+
       setIsStreaming(true);
       setStreamingMessage("");
-      
-      const response = await fetch(buildUrl(api.chat.sendMessage.path, { id: conversationId }), {
+
+      const response = await authFetch(buildUrl(api.chat.sendMessage.path, { id: conversationId }), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content }),
@@ -44,7 +45,7 @@ export function useChat(conversationId?: number) {
 
           const chunk = decoder.decode(value);
           const lines = chunk.split("\n");
-          
+
           for (const line of lines) {
             if (line.startsWith("data: ")) {
               try {
@@ -56,14 +57,14 @@ export function useChat(conversationId?: number) {
                 if (data.done) {
                   setIsStreaming(false);
                 }
-              } catch (e) {
+              } catch {
                 // Ignore parse errors for incomplete chunks
               }
             }
           }
         }
       }
-      
+
       return fullContent;
     },
     onSuccess: () => {
@@ -87,7 +88,7 @@ export function useConversations() {
   const { data: conversations, isLoading } = useQuery({
     queryKey: [api.chat.listConversations.path],
     queryFn: async () => {
-      const res = await fetch(api.chat.listConversations.path);
+      const res = await authFetch(api.chat.listConversations.path);
       if (!res.ok) throw new Error("Failed to fetch conversations");
       return res.json();
     },
@@ -95,7 +96,7 @@ export function useConversations() {
 
   const createConversationMutation = useMutation({
     mutationFn: async (title?: string) => {
-      const res = await fetch(api.chat.createConversation.path, {
+      const res = await authFetch(api.chat.createConversation.path, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title }),

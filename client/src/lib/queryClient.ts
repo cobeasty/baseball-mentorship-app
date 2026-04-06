@@ -28,6 +28,14 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+export async function authFetch(url: string, options?: RequestInit): Promise<Response> {
+  const token = getToken();
+  const existing = (options?.headers as Record<string, string>) ?? {};
+  const headers: Record<string, string> = { ...existing };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return fetch(url, { ...options, headers });
+}
+
 export async function apiRequest(
   method: string,
   url: string,

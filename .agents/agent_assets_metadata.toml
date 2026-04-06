@@ -6,3 +6,9 @@ id = "ImCVOUAaXqFGZvVzk9JTF"
 uri = "file://baseball-mentorship-app.tar.gz"
 type = "unspecified"
 title = "Baseball Mentorship App — Full Source Code"
+
+[[outputs]]
+id = "ES6zIhlGc65SSGqOTDw_T"
+uri = "file://baseball-mentorship-app.zip"
+type = "unspecified"
+title = "Baseball Mentorship App — Full Source Code (.zip)"

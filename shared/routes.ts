@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertModuleSchema, insertVideoSchema, insertFeedbackSchema, insertAgreementSchema, insertAnnouncementSchema, modules, videos, userProgress, videoFeedback, agreements, conversations, messages, subscriptions, announcements } from './schema';
+import { insertModuleSchema, insertVideoSchema, insertFeedbackSchema, insertAgreementSchema, insertAnnouncementSchema, modules, videos, userProgress, videoFeedback, agreements, subscriptions, announcements } from './schema';
 import { users } from './models/auth';
 
 export const errorSchemas = {
@@ -222,30 +222,6 @@ export const api = {
       }
     }
   },
-  chat: {
-    listConversations: {
-      method: 'GET' as const,
-      path: '/api/conversations' as const,
-      responses: { 200: z.array(z.custom<typeof conversations.$inferSelect>()) }
-    },
-    getConversation: {
-      method: 'GET' as const,
-      path: '/api/conversations/:id' as const,
-      responses: { 200: z.custom<any>(), 404: errorSchemas.notFound }
-    },
-    createConversation: {
-      method: 'POST' as const,
-      path: '/api/conversations' as const,
-      input: z.object({ title: z.string().optional() }),
-      responses: { 201: z.custom<typeof conversations.$inferSelect>() }
-    },
-    sendMessage: {
-      method: 'POST' as const,
-      path: '/api/conversations/:id/messages' as const,
-      input: z.object({ content: z.string() }),
-      responses: { 200: z.any() }
-    }
-  }
 };
 
 export function buildUrl(path: string, params?: Record<string, string | number>): string {

@@ -153,10 +153,11 @@ export async function registerRoutes(
           }
         }
 
-        // Non-admins cannot self-approve or change their own tier
+        // Non-admins cannot self-approve, change their role, or change their tier
         if (requester?.role !== "admin") {
           delete input.approvalStatus;
           delete input.tier;
+          delete (input as any).role;
         }
 
         const data: any = { ...input };

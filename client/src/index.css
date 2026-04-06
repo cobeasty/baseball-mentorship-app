@@ -9,6 +9,11 @@
   --font-display: 'Oswald', sans-serif;
   --font-body: 'Manrope', sans-serif;
 
+  /* Tailwind font-family aliases (referenced by tailwind.config.ts) */
+  --font-sans: 'Manrope', sans-serif;
+  --font-serif: 'Oswald', sans-serif;
+  --font-mono: 'Courier New', Courier, monospace;
+
   /* Elite Dark Mode Palette - Base */
   --background: 240 6% 6%;
   --foreground: 0 0% 98%;

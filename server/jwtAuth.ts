@@ -1,7 +1,10 @@
 import jwt from "jsonwebtoken";
 import type { Request, Response, NextFunction } from "express";
 
-const JWT_SECRET = process.env.SESSION_SECRET || "fallback-dev-secret-change-in-prod";
+const JWT_SECRET = process.env.SESSION_SECRET;
+if (!JWT_SECRET) {
+  throw new Error("SESSION_SECRET environment variable is required for JWT authentication");
+}
 const JWT_EXPIRES_IN = "30d";
 
 export interface JwtPayload {
@@ -9,11 +12,11 @@ export interface JwtPayload {
 }
 
 export function signToken(userId: string): string {
-  return jwt.sign({ userId } as JwtPayload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  return jwt.sign({ userId } as JwtPayload, JWT_SECRET!, { expiresIn: JWT_EXPIRES_IN });
 }
 
 export function verifyToken(token: string): JwtPayload {
-  return jwt.verify(token, JWT_SECRET) as JwtPayload;
+  return jwt.verify(token, JWT_SECRET!) as JwtPayload;
 }
 
 export function requireAuth(req: any, res: Response, next: NextFunction): void {

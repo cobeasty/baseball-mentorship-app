@@ -12,7 +12,7 @@ export function registerChatRoutes(app: Express): void {
   // Get all conversations for current user
   app.get("/api/conversations", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       const conversations = await chatStorage.getAllConversations(userId);
       res.json(conversations);
     } catch (error) {
@@ -25,7 +25,7 @@ export function registerChatRoutes(app: Express): void {
   app.get("/api/conversations/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
       const id = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       const conversation = await chatStorage.getConversation(id, userId);
       if (!conversation) {
         return res.status(404).json({ error: "Conversation not found" });
@@ -42,7 +42,7 @@ export function registerChatRoutes(app: Express): void {
   app.post("/api/conversations", isAuthenticated, async (req: any, res: Response) => {
     try {
       const { title } = req.body;
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       const conversation = await chatStorage.createConversation(userId, title || "New Chat");
       res.status(201).json(conversation);
     } catch (error) {
@@ -55,7 +55,7 @@ export function registerChatRoutes(app: Express): void {
   app.post("/api/conversations/:id/messages", isAuthenticated, async (req: any, res: Response) => {
     try {
       const conversationId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       const { content } = req.body;
 
       // Verify ownership

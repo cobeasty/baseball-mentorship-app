@@ -42,6 +42,9 @@ export async function registerRoutes(
 ): Promise<Server> {
   registerAuthRoutes(app);
 
+  const { registerChatRoutes } = await import("./replit_integrations/chat");
+  registerChatRoutes(app);
+
   // ─── Users ────────────────────────────────────────────────────────────────
 
   // Update user — self only (or admin). Server-side age validation enforced.

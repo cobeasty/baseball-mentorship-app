@@ -1,13 +1,8 @@
-import type { Express } from "express";
+import type { Express, NextFunction } from "express";
 import { authStorage } from "./storage";
-import { requireAuth, signToken } from "../../jwtAuth";
-import {
-  createLocalUser,
-  verifyLocalUser,
-  signupSchema,
-  loginSchema,
-} from "../../localAuth";
+import { createLocalUser, signupSchema } from "../../localAuth";
 import { z } from "zod";
+import passport from "../../passportAuth";
 
 function userPublic(user: any) {
   const { passwordHash, ...rest } = user;
@@ -16,24 +11,22 @@ function userPublic(user: any) {
 
 export function registerAuthRoutes(app: Express): void {
   // ─── Get current authenticated user ────────────────────────────────────────
-  app.get("/api/auth/user", requireAuth, async (req: any, res) => {
-    try {
-      const user = await authStorage.getUser(req.userId);
-      if (!user) return res.status(401).json({ message: "User not found" });
-      res.json(userPublic(user));
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
+  app.get("/api/auth/user", (req: any, res) => {
+    if (req.isAuthenticated && req.isAuthenticated() && req.user) {
+      return res.json(userPublic(req.user));
     }
+    return res.status(401).json({ message: "Unauthorized" });
   });
 
   // ─── Sign up ────────────────────────────────────────────────────────────────
-  app.post("/api/auth/signup", async (req, res) => {
+  app.post("/api/auth/signup", async (req: any, res, next: NextFunction) => {
     try {
       const { email, password, firstName, lastName } = signupSchema.parse(req.body);
       const user = await createLocalUser(email, password, firstName, lastName);
-      const token = signToken(user.id);
-      res.status(201).json({ token, user: userPublic(user) });
+      req.login(user, (err: any) => {
+        if (err) return next(err);
+        res.status(201).json({ user: userPublic(user) });
+      });
     } catch (err: any) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
@@ -47,23 +40,30 @@ export function registerAuthRoutes(app: Express): void {
   });
 
   // ─── Sign in ────────────────────────────────────────────────────────────────
-  app.post("/api/auth/login", async (req, res) => {
-    try {
-      const { email, password } = loginSchema.parse(req.body);
-      const user = await verifyLocalUser(email, password);
-      const token = signToken(user.id);
-      res.json({ token, user: userPublic(user) });
-    } catch (err: any) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
+  app.post("/api/auth/login", (req: any, res, next: NextFunction) => {
+    passport.authenticate(
+      "local",
+      (err: any, user: any, info: { message?: string }) => {
+        if (err) return next(err);
+        if (!user) {
+          return res.status(401).json({ message: info?.message || "Invalid email or password." });
+        }
+        req.login(user, (loginErr: any) => {
+          if (loginErr) return next(loginErr);
+          return res.json({ user: userPublic(user) });
+        });
       }
-      return res.status(401).json({ message: err.message || "Invalid email or password." });
-    }
+    )(req, res, next);
   });
 
   // ─── Sign out ───────────────────────────────────────────────────────────────
-  // JWT is stateless — client drops the token; server just acknowledges
-  app.post("/api/auth/logout", (_req, res) => {
-    res.json({ success: true });
+  app.post("/api/auth/logout", (req: any, res, next: NextFunction) => {
+    req.logout((err: any) => {
+      if (err) return next(err);
+      req.session.destroy(() => {
+        res.clearCookie("connect.sid");
+        res.json({ success: true });
+      });
+    });
   });
 }

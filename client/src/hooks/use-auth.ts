@@ -1,24 +1,10 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { User } from "@shared/models/auth";
-import { getToken, clearToken } from "@/lib/queryClient";
 
 async function fetchUser(): Promise<User | null> {
-  const token = getToken();
-  if (!token) return null;
-
-  const response = await fetch("/api/auth/user", {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (response.status === 401) {
-    clearToken();
-    return null;
-  }
-
-  if (!response.ok) {
-    throw new Error(`${response.status}: ${response.statusText}`);
-  }
-
+  const response = await fetch("/api/auth/user", { credentials: "include" });
+  if (response.status === 401) return null;
+  if (!response.ok) throw new Error(`${response.status}: ${response.statusText}`);
   return response.json();
 }
 
@@ -32,10 +18,11 @@ export function useAuth() {
   });
 
   function logout() {
-    clearToken();
-    queryClient.setQueryData(["/api/auth/user"], null);
-    queryClient.clear();
-    window.location.href = "/";
+    fetch("/api/auth/logout", { method: "POST", credentials: "include" }).finally(() => {
+      queryClient.setQueryData(["/api/auth/user"], null);
+      queryClient.clear();
+      window.location.href = "/";
+    });
   }
 
   return {

@@ -1,7 +1,5 @@
-import { clearToken } from "@/lib/queryClient";
-
 export function isUnauthorizedError(error: Error): boolean {
-  return /^401: .*Unauthorized/.test(error.message);
+  return /^401: /.test(error.message);
 }
 
 export function redirectToLogin(toast?: (options: { title: string; description: string; variant: string }) => void) {
@@ -12,7 +10,6 @@ export function redirectToLogin(toast?: (options: { title: string; description: 
       variant: "destructive",
     });
   }
-  clearToken();
   setTimeout(() => {
     window.location.href = "/";
   }, 500);

@@ -70,8 +70,12 @@ async function requireActiveSubscription(req: any, res: Response, next: NextFunc
   if (!user) return res.status(401).json({ message: "User not found" });
   // Admins and parents bypass subscription check
   if (user.role === "admin" || user.role === "parent") return next();
+  // Check Stripe subscription record first (source of truth for live payments)
   const sub = await storage.getSubscription(userId);
-  if (!sub || sub.status !== "active" || !sub.tier || sub.tier === "none") {
+  const hasActiveSub = sub && sub.status === "active" && sub.tier && sub.tier !== "none";
+  // Fallback: check user.tier (set by admin or Stripe webhook — covers seeded/test accounts)
+  const hasUserTier = user.tier && user.tier !== "none";
+  if (!hasActiveSub && !hasUserTier) {
     return res.status(403).json({
       message: "An active subscription is required to access this content.",
       code: "SUBSCRIPTION_REQUIRED",

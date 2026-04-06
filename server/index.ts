@@ -1,4 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
+import session from "express-session";
+import connectPg from "connect-pg-simple";
+import passport from "./passportAuth";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
@@ -75,6 +78,29 @@ app.post(
 // Must come AFTER the webhook route
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// ─── Session + Passport ──────────────────────────────────────────────────────
+const PgStore = connectPg(session);
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET!,
+    resave: false,
+    saveUninitialized: false,
+    store: new PgStore({
+      conString: process.env.DATABASE_URL,
+      tableName: "sessions",
+      createTableIfMissing: true,
+    }),
+    cookie: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      sameSite: "lax",
+    },
+  })
+);
+app.use(passport.initialize());
+app.use(passport.session());
 
 // ─── Request logging ─────────────────────────────────────────────────────────
 app.use((req, res, next) => {

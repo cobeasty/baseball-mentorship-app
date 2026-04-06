@@ -25,6 +25,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 // Active athletes must have an active Stripe subscription before accessing
 // the full dashboard. If they don't, redirect them to the Subscribe page.
 function AthleteSubscriptionGate() {
+  const { user } = useAuth();
   const { data: subscription, isLoading } = useSubscription();
 
   if (isLoading) {
@@ -35,7 +36,11 @@ function AthleteSubscriptionGate() {
     );
   }
 
-  const hasActiveSub = subscription?.status === "active" && subscription?.tier && subscription.tier !== "none";
+  // Stripe subscription is the source of truth for live payments.
+  // user.tier is the fallback for admin-provisioned / test accounts.
+  const hasActiveSub =
+    (subscription?.status === "active" && subscription?.tier && subscription.tier !== "none") ||
+    ((user as any)?.tier && (user as any).tier !== "none");
 
   return (
     <AppLayout>

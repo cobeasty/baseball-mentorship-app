@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Shield, Target, Trophy, ArrowRight, X, Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, setToken, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 type AuthMode = "signup" | "login";
 
@@ -34,8 +34,7 @@ function AuthModal({ mode, onClose }: { mode: AuthMode; onClose: () => void }) {
           : { email: form.email, password: form.password };
 
       const res = await apiRequest("POST", endpoint, body);
-      const { token, user } = await res.json();
-      setToken(token);
+      const { user } = await res.json();
       queryClient.setQueryData(["/api/auth/user"], user);
       onClose();
     } catch (err: any) {

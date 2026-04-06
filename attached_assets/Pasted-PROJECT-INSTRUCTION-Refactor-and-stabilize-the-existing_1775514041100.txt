@@ -1,0 +1,171 @@
+PROJECT INSTRUCTION
+
+Refactor and stabilize the existing full-stack web application without rebuilding it. Maintain the current architecture (React + Express + PostgreSQL + Drizzle + Stripe + Replit Auth), but clean up bugs, reduce complexity, and ensure security and scalability.
+
+⸻
+
+PRIORITY 1: SECURE VIDEO STORAGE (CRITICAL)
+
+Replace all current video URL handling with secure private cloud storage.
+
+Requirements:
+	•	Use AWS S3 (or equivalent) with private buckets
+	•	Upload videos directly to cloud storage (not external URLs)
+	•	Generate signed URLs for temporary, secure viewing
+	•	Enforce strict access control:
+	•	Only the athlete (owner) and admin can view videos
+	•	Prevent any public access to video files
+	•	Add file size limits and basic validation
+
+⸻
+
+PRIORITY 2: AUTH & ROLE ENFORCEMENT
+
+Keep the existing Replit Auth (OIDC) + session-based system, but clean and enforce it properly.
+
+Requirements:
+	•	Ensure session persistence is stable
+	•	Enforce role-based access everywhere:
+	•	Athlete → only their own data
+	•	Parent → read-only access to linked athlete
+	•	Admin → full access
+	•	Enforce approvalStatus gating:
+	•	Users with “pending” cannot access dashboard
+	•	Ensure no user can access another user’s data under any condition
+	•	Maintain existing middleware:
+	•	requireAdmin
+	•	requireSelfOrAdmin
+
+⸻
+
+PRIORITY 3: SUBSCRIPTION ENFORCEMENT (STRIPE)
+
+Stabilize and enforce Stripe integration.
+
+Requirements:
+	•	Ensure subscription is checked on all protected routes
+	•	Block dashboard access if subscription is inactive or canceled
+	•	Enforce tier-based feature limits:
+	•	Tier 1 → no video uploads
+	•	Tier 2 → limited uploads
+	•	Tier 3 → higher limits and priority
+	•	Ensure webhook handling is:
+	•	Reliable
+	•	Idempotent (no duplicate processing)
+	•	Log Stripe events for debugging
+	•	Keep current system, but reduce reliance on stripe-replit-sync if unstable
+
+⸻
+
+PRIORITY 4: SIMPLIFY THE SYSTEM
+
+Remove or disable non-essential features to reduce bugs and complexity.
+
+Remove or disable:
+	•	AI chat system (conversations, messages)
+	•	OpenAI integration
+	•	WebSockets (ws)
+	•	Recharts (if not actively used)
+
+Focus only on:
+	•	Mentorship content
+	•	Video feedback
+	•	Subscriptions
+	•	Parent, athlete, and admin workflows
+
+⸻
+
+PRIORITY 5: DATABASE CLEANUP
+
+Ensure database structure is clean and aligned with core features.
+
+Core tables must remain:
+	•	users
+	•	subscriptions
+	•	modules
+	•	user_progress
+	•	videos
+	•	video_feedback
+	•	agreements
+	•	parent_consents
+	•	announcements
+
+Requirements:
+	•	Remove unused tables or fields
+	•	Ensure relationships are consistent
+	•	Ensure queries are optimized
+
+⸻
+
+PRIORITY 6: SECURITY HARDENING
+
+Ensure full backend protection.
+
+Requirements:
+	•	Protect all API routes (no public sensitive endpoints)
+	•	Ensure:
+	•	Athletes only access their own videos and progress
+	•	Parents only access their linked athlete
+	•	Prevent role escalation (users cannot modify their own role or tier)
+	•	Ensure agreement records are securely stored and retrievable
+	•	Ensure no sensitive data is exposed in responses
+
+⸻
+
+PRIORITY 7: PERFORMANCE AND CLEANUP
+	•	Remove unused dependencies
+	•	Optimize API responses
+	•	Ensure frontend only fetches necessary data
+	•	Maintain current UI (React + Tailwind + ShadCN)
+	•	Do not rebuild frontend
+
+⸻
+
+CONFIGURATION REQUIREMENTS
+
+Preserve:
+	•	TypeScript strict mode
+	•	Path aliases (”@/”, “@shared/”)
+	•	Tailwind and ShadCN setup
+	•	PostCSS config
+
+Ensure:
+	•	Consistent imports across client and server
+	•	Shared types are used properly
+
+⸻
+
+DO NOT
+	•	Do not rebuild the app from scratch
+	•	Do not switch frameworks
+	•	Do not replace the frontend
+	•	Do not over-engineer new features
+	•	Do not migrate away from the current database
+
+⸻
+
+FINAL GOAL
+
+Deliver a stable, secure, legally compliant, subscription-based mentorship platform that is ready for real users.
+
+The system must prioritize:
+	•	Stability
+	•	Security (especially for minors)
+	•	Proper access control
+	•	Reliable payments
+	•	Clean, maintainable architecture
+
+Not feature expansion.
+
+⸻
+
+AFTER IMPLEMENTATION
+
+Test the following flows:
+	1.	Signup
+	2.	Parent approval
+	3.	Payment
+	4.	Dashboard access
+	5.	Video upload and review
+
+Only proceed once all flows work correctly.

@@ -2,11 +2,12 @@
 A legally compliant, subscription-based web app for baseball athletes ages 14–18 that delivers structured mentorship, mindset development, recruiting education, and limited video feedback from a professional player.
 
 ## Architecture
-- **JWT Authentication** (custom, no Replit Auth/OIDC) — tokens signed with SESSION_SECRET, stored in browser localStorage
+- **Session-based Authentication** (Passport.js LocalStrategy + bcrypt + express-session + connect-pg-simple) — HttpOnly cookies, 30-day sessions stored in PostgreSQL `sessions` table. Requires SESSION_SECRET env var.
 - React Frontend (Shadcn UI, Wouter, TanStack Query, framer-motion, clsx, tailwind-merge, date-fns)
 - Tailwind CSS dark mode with volt green (`--primary: 69 100% 50%`) athletic design, Oswald/Manrope fonts
 - Express + Drizzle Backend (PostgreSQL)
 - Stripe for subscription billing (requires STRIPE_SECRET_KEY, STRIPE_TIER1_PRICE_ID, STRIPE_TIER2_PRICE_ID, STRIPE_TIER3_PRICE_ID, STRIPE_WEBHOOK_SECRET)
+- S3 private video storage with presigned URLs (requires AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_BUCKET, AWS_REGION — gracefully degrades to URL-based fallback when unconfigured)
 
 ## Features Built
 

@@ -1,25 +1,10 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
-const TOKEN_KEY = "jwt_token";
-
-export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
-}
-
-export function setToken(token: string): void {
-  localStorage.setItem(TOKEN_KEY, token);
-}
-
-export function clearToken(): void {
-  localStorage.removeItem(TOKEN_KEY);
-}
-
-function authHeaders(extra?: Record<string, string>): Record<string, string> {
-  const token = getToken();
-  const headers: Record<string, string> = { ...extra };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  return headers;
-}
+/**
+ * Auth is session-based (Passport + express-session + PostgreSQL).
+ * The browser automatically sends the HttpOnly session cookie on every request.
+ * All fetches must include credentials: "include" to send that cookie.
+ */
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -28,22 +13,20 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+/** Fetch wrapper that always includes the session cookie. */
 export async function authFetch(url: string, options?: RequestInit): Promise<Response> {
-  const token = getToken();
-  const existing = (options?.headers as Record<string, string>) ?? {};
-  const headers: Record<string, string> = { ...existing };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  return fetch(url, { ...options, headers });
+  return fetch(url, { credentials: "include", ...options });
 }
 
 export async function apiRequest(
   method: string,
   url: string,
-  data?: unknown | undefined,
+  data?: unknown,
 ): Promise<Response> {
   const res = await fetch(url, {
     method,
-    headers: authHeaders(data ? { "Content-Type": "application/json" } : {}),
+    credentials: "include",
+    headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
   });
 
@@ -58,7 +41,7 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const res = await fetch(queryKey[0] as string, {
-      headers: authHeaders(),
+      credentials: "include",
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

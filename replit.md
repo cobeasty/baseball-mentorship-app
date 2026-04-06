@@ -2,8 +2,9 @@
 A legally compliant, subscription-based web app for baseball athletes ages 14–18 that delivers structured mentorship, mindset development, recruiting education, and limited video feedback from a professional player.
 
 ## Architecture
-- Replit Auth (OIDC) for user accounts (sessions stored in PostgreSQL)
-- React Frontend (Shadcn UI, Wouter, TanStack Query)
+- **JWT Authentication** (custom, no Replit Auth/OIDC) — tokens signed with SESSION_SECRET, stored in browser localStorage
+- React Frontend (Shadcn UI, Wouter, TanStack Query, framer-motion, clsx, tailwind-merge, date-fns)
+- Tailwind CSS dark mode with volt green (`--primary: 69 100% 50%`) athletic design, Oswald/Manrope fonts
 - Express + Drizzle Backend (PostgreSQL)
 - Stripe for subscription billing (requires STRIPE_SECRET_KEY, STRIPE_TIER1_PRICE_ID, STRIPE_TIER2_PRICE_ID, STRIPE_TIER3_PRICE_ID, STRIPE_WEBHOOK_SECRET)
 
@@ -58,6 +59,8 @@ A legally compliant, subscription-based web app for baseball athletes ages 14–
 - `conversations` + `messages`: AI mentor chat history
 
 ## Security Architecture
+- **JWT Auth**: `server/jwtAuth.ts` — `signToken(userId)`, `verifyToken(token)`, `requireAuth` middleware. Token in `Authorization: Bearer` header. Signed with `SESSION_SECRET`.
+- **Client storage**: JWT stored in `localStorage` under key `jwt_token`. Cleared on logout.
 - **Admin enforcement**: `requireAdmin` middleware on all admin endpoints — returns 403 for non-admins
 - **Self-or-admin**: `requireSelfOrAdmin` on user update, agreements, progress — only own data or admin
 - **Server-side age validation**: Onboarding enforces 14–18 age gate server-side (cannot be bypassed client-side)

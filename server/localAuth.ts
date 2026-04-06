@@ -81,15 +81,3 @@ export async function verifyLocalUser(email: string, password: string) {
   return user;
 }
 
-/**
- * Build a session user object compatible with the existing isAuthenticated
- * middleware. We set expires_at far in the future (30 days) and mark this
- * as a local auth session so token-refresh logic is skipped.
- */
-export function buildLocalSessionUser(userId: string) {
-  return {
-    claims: { sub: userId },
-    expires_at: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60, // 30 days
-    authType: "local" as const,
-  };
-}

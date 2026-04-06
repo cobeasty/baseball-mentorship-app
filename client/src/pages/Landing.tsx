@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Shield, Target, Trophy, ArrowRight, X, Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, setToken, queryClient } from "@/lib/queryClient";
 
 type AuthMode = "signup" | "login";
 
@@ -33,9 +33,10 @@ function AuthModal({ mode, onClose }: { mode: AuthMode; onClose: () => void }) {
           ? { email: form.email, password: form.password, firstName: form.firstName, lastName: form.lastName }
           : { email: form.email, password: form.password };
 
-      await apiRequest("POST", endpoint, body);
-      // Invalidate auth cache so the app re-checks the session
-      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      const res = await apiRequest("POST", endpoint, body);
+      const { token, user } = await res.json();
+      setToken(token);
+      queryClient.setQueryData(["/api/auth/user"], user);
       onClose();
     } catch (err: any) {
       const msg = err?.message || "Something went wrong. Please try again.";
@@ -43,10 +44,6 @@ function AuthModal({ mode, onClose }: { mode: AuthMode; onClose: () => void }) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleReplitLogin = () => {
-    window.location.href = "/api/login";
   };
 
   const inputCls =
@@ -164,23 +161,6 @@ function AuthModal({ mode, onClose }: { mode: AuthMode; onClose: () => void }) {
             )}
           </Button>
         </form>
-
-        {/* Divider */}
-        <div className="my-5 flex items-center gap-3">
-          <div className="flex-1 h-px bg-white/10" />
-          <span className="text-xs text-muted-foreground uppercase tracking-widest">or</span>
-          <div className="flex-1 h-px bg-white/10" />
-        </div>
-
-        {/* Replit OAuth (for admin / Coby) */}
-        <Button
-          variant="outline"
-          className="w-full border-white/20"
-          onClick={handleReplitLogin}
-          data-testid="button-replit-login"
-        >
-          Continue with Replit
-        </Button>
 
         {/* Switch mode */}
         <p className="text-center text-sm text-muted-foreground mt-5">

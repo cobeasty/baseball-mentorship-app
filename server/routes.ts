@@ -3,7 +3,7 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
-import { isAuthenticated, setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
+import { isAuthenticated, registerAuthRoutes } from "./replit_integrations/auth";
 import { getUncachableStripeClient } from "./stripeClient";
 import { TIER_PRICES, getTierFromPriceId } from "./stripe";
 import crypto from "crypto";
@@ -11,7 +11,7 @@ import crypto from "crypto";
 // ─── Admin middleware ─────────────────────────────────────────────────────────
 // Applies AFTER isAuthenticated — enforces admin role
 async function requireAdmin(req: any, res: Response, next: NextFunction) {
-  const userId = req.user?.claims?.sub;
+  const userId = req.userId;
   if (!userId) return res.status(401).json({ message: "Unauthorized" });
   const user = await storage.getUser(userId);
   if (user?.role !== "admin") {
@@ -24,7 +24,7 @@ async function requireAdmin(req: any, res: Response, next: NextFunction) {
 // Allows user to access their own resource, or admin to access any
 function requireSelfOrAdmin(getTargetId: (req: any) => string) {
   return async (req: any, res: Response, next: NextFunction) => {
-    const userId = req.user?.claims?.sub;
+    const userId = req.userId;
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
     const targetId = getTargetId(req);
     if (userId === targetId) return next();
@@ -40,11 +40,7 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  await setupAuth(app);
   registerAuthRoutes(app);
-
-  const { registerChatRoutes } = await import("./replit_integrations/chat");
-  registerChatRoutes(app);
 
   // ─── Users ────────────────────────────────────────────────────────────────
 
@@ -56,7 +52,7 @@ export async function registerRoutes(
     async (req: any, res) => {
       try {
         const input = api.users.update.input.parse(req.body);
-        const requesterId = req.user.claims.sub;
+        const requesterId = req.userId;
         const targetId = req.params.id;
         const requester = await storage.getUser(requesterId);
 
@@ -162,7 +158,7 @@ export async function registerRoutes(
       if (!email)
         return res.status(400).json({ message: "Email required" });
       // Only allow querying own email (unless admin)
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       const user = await storage.getUser(userId);
       if (
         user?.role !== "admin" &&
@@ -249,7 +245,7 @@ export async function registerRoutes(
     api.progress.list.path,
     isAuthenticated,
     async (req: any, res) => {
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       const progress = await storage.getUserProgress(userId);
       res.json(progress);
     }
@@ -276,7 +272,7 @@ export async function registerRoutes(
         if (!moduleId || typeof moduleId !== "number") {
           return res.status(400).json({ message: "Valid moduleId required" });
         }
-        const userId = req.user.claims.sub;
+        const userId = req.userId;
         const progress = await storage.completeModule(userId, moduleId);
         res.status(201).json(progress);
       } catch {
@@ -292,7 +288,7 @@ export async function registerRoutes(
     api.videos.list.path,
     isAuthenticated,
     async (req: any, res) => {
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       const user = await storage.getUser(userId);
       const vids =
         user?.role === "admin"
@@ -309,7 +305,7 @@ export async function registerRoutes(
     async (req: any, res) => {
       try {
         const input = api.videos.create.input.parse(req.body);
-        const userId = req.user.claims.sub;
+        const userId = req.userId;
 
         const sub = await storage.getSubscription(userId);
         const tier = sub?.tier || "none";
@@ -376,7 +372,7 @@ export async function registerRoutes(
     async (req: any, res) => {
       try {
         const input = api.feedback.create.input.parse(req.body);
-        const adminId = req.user.claims.sub;
+        const adminId = req.userId;
         const feedback = await storage.createFeedback(input, adminId);
         res.status(201).json(feedback);
       } catch (err) {
@@ -396,7 +392,7 @@ export async function registerRoutes(
       if (isNaN(videoId))
         return res.status(400).json({ message: "Invalid video ID" });
 
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       const user = await storage.getUser(userId);
 
       if (user?.role !== "admin") {
@@ -423,7 +419,7 @@ export async function registerRoutes(
         const { agreementType } = req.body;
         if (!agreementType)
           return res.status(400).json({ message: "agreementType required" });
-        const userId = req.user.claims.sub;
+        const userId = req.userId;
         const agreement = await storage.createAgreement(
           { agreementType },
           userId
@@ -442,7 +438,7 @@ export async function registerRoutes(
     api.subscriptions.get.path,
     isAuthenticated,
     async (req: any, res) => {
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       const sub = await storage.getSubscription(userId);
       res.json(sub || null);
     }
@@ -467,7 +463,7 @@ export async function registerRoutes(
           return res.status(400).json({ message: "Invalid tier specified" });
         }
 
-        const userId = req.user.claims.sub;
+        const userId = req.userId;
         const user = await storage.getUser(userId);
         if (!user) return res.status(404).json({ message: "User not found" });
 
@@ -527,7 +523,7 @@ export async function registerRoutes(
         if (!stripe)
           return res.status(503).json({ message: "Stripe is not connected." });
 
-        const userId = req.user.claims.sub;
+        const userId = req.userId;
         const sub = await storage.getSubscription(userId);
         if (!sub?.stripeCustomerId)
           return res
@@ -560,7 +556,7 @@ export async function registerRoutes(
         if (!stripe)
           return res.status(503).json({ message: "Stripe is not connected." });
 
-        const userId = req.user.claims.sub;
+        const userId = req.userId;
         const sub = await storage.getSubscription(userId);
         if (!sub?.stripeSubscriptionId)
           return res.status(400).json({ message: "No active subscription." });
@@ -599,7 +595,7 @@ export async function registerRoutes(
     async (req: any, res) => {
       try {
         const input = api.announcements.create.input.parse(req.body);
-        const userId = req.user.claims.sub;
+        const userId = req.userId;
         const ann = await storage.createAnnouncement(input, userId);
         res.status(201).json(ann);
       } catch (err) {
@@ -686,7 +682,7 @@ export async function registerRoutes(
             .status(400)
             .json({ message: "Valid parent email required" });
         }
-        const userId = req.user.claims.sub;
+        const userId = req.userId;
         const token = crypto.randomBytes(32).toString("hex");
 
         await storage.createParentConsent(userId, parentEmail, token);

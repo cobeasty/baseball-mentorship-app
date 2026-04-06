@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
+import { useSubscription } from "@/hooks/use-subscription";
 import { Loader2 } from "lucide-react";
 
 import NotFound from "@/pages/not-found";
@@ -19,6 +20,46 @@ import AdminPortal from "@/pages/AdminPortal";
 import ParentPortal from "@/pages/ParentPortal";
 import Settings from "@/pages/Settings";
 import { AppLayout } from "@/components/layout/AppLayout";
+
+// ─── Subscription gate for athletes ──────────────────────────────────────────
+// Active athletes must have an active Stripe subscription before accessing
+// the full dashboard. If they don't, redirect them to the Subscribe page.
+function AthleteSubscriptionGate() {
+  const { data: subscription, isLoading } = useSubscription();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    );
+  }
+
+  const hasActiveSub = subscription?.status === "active" && subscription?.tier && subscription.tier !== "none";
+
+  return (
+    <AppLayout>
+      <Switch>
+        {hasActiveSub ? (
+          <>
+            <Route path="/" component={Dashboard} />
+            <Route path="/get-started" component={GetStarted} />
+            <Route path="/modules" component={Modules} />
+            <Route path="/videos" component={VideoSubmissions} />
+            <Route path="/subscribe" component={Subscribe} />
+            <Route path="/settings" component={Settings} />
+          </>
+        ) : (
+          <>
+            <Route path="/" component={Subscribe} />
+            <Route path="/subscribe" component={Subscribe} />
+            <Route path="/settings" component={Settings} />
+          </>
+        )}
+      </Switch>
+    </AppLayout>
+  );
+}
 
 function ProtectedRouter() {
   const { user } = useAuth();
@@ -48,15 +89,18 @@ function ProtectedRouter() {
     );
   }
 
+  // Approved athletes go through the subscription gate before the full dashboard
+  if (user.role === "athlete" && user.approvalStatus === "active") {
+    return <AthleteSubscriptionGate />;
+  }
+
   return (
     <AppLayout>
       <Switch>
+        {/* Athlete fallback (shouldn't reach here normally) */}
         {user.role === "athlete" && (
           <>
-            <Route path="/" component={Dashboard} />
-            <Route path="/get-started" component={GetStarted} />
-            <Route path="/modules" component={Modules} />
-            <Route path="/videos" component={VideoSubmissions} />
+            <Route path="/" component={Subscribe} />
             <Route path="/subscribe" component={Subscribe} />
             <Route path="/settings" component={Settings} />
           </>

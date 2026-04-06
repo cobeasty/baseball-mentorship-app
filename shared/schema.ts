@@ -31,6 +31,7 @@ export const videos = pgTable("videos", {
   athleteId: varchar("athlete_id").notNull().references(() => users.id),
   title: text("title").notNull(),
   videoUrl: text("video_url").notNull(),
+  storageKey: text("storage_key"), // S3 object key when using private cloud storage
   notes: text("notes"),
   status: text("status").default("submitted"),
   submittedAt: timestamp("submitted_at").defaultNow(),

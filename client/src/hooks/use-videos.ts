@@ -88,3 +88,70 @@ export function useCreateFeedback() {
     },
   });
 }
+
+// ─── S3 / Secure Video Storage ────────────────────────────────────────────────
+
+/** Check whether the server has S3 configured. */
+export function useS3Status() {
+  return useQuery({
+    queryKey: ["/api/videos/s3-status"],
+    queryFn: async () => {
+      const res = await authFetch("/api/videos/s3-status");
+      if (!res.ok) return { configured: false };
+      return res.json() as Promise<{ configured: boolean }>;
+    },
+    staleTime: 60_000,
+  });
+}
+
+/**
+ * Upload a video file directly to S3 via a presigned PUT URL.
+ * Steps: 1) request presigned URL from server, 2) PUT to S3, 3) return storageKey.
+ */
+export function useS3VideoUpload() {
+  return useMutation({
+    mutationFn: async (file: File): Promise<{ storageKey: string }> => {
+      // Step 1: get presigned upload URL from server
+      const res = await authFetch("/api/videos/presigned-upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: file.name, contentType: file.type }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: "Upload failed" }));
+        throw new Error(err.message || "Failed to get upload URL");
+      }
+      const { uploadUrl, storageKey } = await res.json();
+
+      // Step 2: PUT file directly to S3 (no auth header — the presigned URL handles auth)
+      const s3Res = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      if (!s3Res.ok) {
+        throw new Error("Failed to upload video to storage. Please try again.");
+      }
+
+      return { storageKey };
+    },
+  });
+}
+
+/**
+ * Fetch a short-lived signed URL for viewing a private S3 video.
+ * Should be refetched when the user wants to watch — don't cache for more than 50 min.
+ */
+export function useSignedVideoUrl(videoId: number | null) {
+  return useQuery({
+    queryKey: ["/api/videos", videoId, "signed-url"],
+    queryFn: async () => {
+      if (!videoId) return null;
+      const res = await authFetch(`/api/videos/${videoId}/signed-url`);
+      if (!res.ok) return null;
+      return res.json() as Promise<{ viewUrl: string; expiresIn: number }>;
+    },
+    enabled: !!videoId,
+    staleTime: 50 * 60 * 1000, // refetch after 50 min (URL expires at 60 min)
+  });
+}

@@ -7,6 +7,13 @@ import { isAuthenticated, registerAuthRoutes } from "./replit_integrations/auth"
 import { getUncachableStripeClient } from "./stripeClient";
 import { TIER_PRICES, getTierFromPriceId } from "./stripe";
 import crypto from "crypto";
+import {
+  isS3Configured,
+  generateStorageKey,
+  getPresignedUploadUrl,
+  getPresignedViewUrl,
+  deleteS3Object,
+} from "./s3";
 
 // ─── Admin middleware ─────────────────────────────────────────────────────────
 // Applies AFTER isAuthenticated — enforces admin role
@@ -34,6 +41,56 @@ function requireSelfOrAdmin(getTargetId: (req: any) => string) {
     }
     next();
   };
+}
+
+// ─── Active approval middleware ───────────────────────────────────────────────
+// Athletes must have approvalStatus=active; admins always pass through
+async function requireActiveApproval(req: any, res: Response, next: NextFunction) {
+  const userId = req.userId;
+  if (!userId) return res.status(401).json({ message: "Unauthorized" });
+  const user = await storage.getUser(userId);
+  if (!user) return res.status(401).json({ message: "User not found" });
+  if (user.role === "admin") return next();
+  if (user.approvalStatus !== "active") {
+    return res.status(403).json({
+      message: "Your account has not been approved yet.",
+      code: "PENDING_APPROVAL",
+    });
+  }
+  next();
+}
+
+// ─── Active subscription middleware ───────────────────────────────────────────
+// Requires an active Stripe subscription for athlete-facing content.
+// Admins and parents always pass through.
+async function requireActiveSubscription(req: any, res: Response, next: NextFunction) {
+  const userId = req.userId;
+  if (!userId) return res.status(401).json({ message: "Unauthorized" });
+  const user = await storage.getUser(userId);
+  if (!user) return res.status(401).json({ message: "User not found" });
+  // Admins and parents bypass subscription check
+  if (user.role === "admin" || user.role === "parent") return next();
+  const sub = await storage.getSubscription(userId);
+  if (!sub || sub.status !== "active" || !sub.tier || sub.tier === "none") {
+    return res.status(403).json({
+      message: "An active subscription is required to access this content.",
+      code: "SUBSCRIPTION_REQUIRED",
+    });
+  }
+  next();
+}
+
+// ─── Athletes-only write middleware ───────────────────────────────────────────
+// Blocks parents from writing; allows athletes (approved) and admins.
+async function requireAthleteOrAdmin(req: any, res: Response, next: NextFunction) {
+  const userId = req.userId;
+  if (!userId) return res.status(401).json({ message: "Unauthorized" });
+  const user = await storage.getUser(userId);
+  if (!user) return res.status(401).json({ message: "User not found" });
+  if (user.role === "parent") {
+    return res.status(403).json({ message: "Parents have read-only access." });
+  }
+  next();
 }
 
 export async function registerRoutes(
@@ -178,11 +235,17 @@ export async function registerRoutes(
 
   // ─── Modules ──────────────────────────────────────────────────────────────
 
-  // List modules — requires authentication (not publicly accessible)
-  app.get(api.modules.list.path, isAuthenticated, async (_req, res) => {
-    const mods = await storage.getModules();
-    res.json(mods);
-  });
+  // List modules — requires active subscription (tier 1+)
+  app.get(
+    api.modules.list.path,
+    isAuthenticated,
+    requireActiveApproval,
+    requireActiveSubscription,
+    async (_req, res) => {
+      const mods = await storage.getModules();
+      res.json(mods);
+    }
+  );
 
   // Create module — admin only
   app.post(
@@ -243,10 +306,12 @@ export async function registerRoutes(
 
   // ─── Progress ─────────────────────────────────────────────────────────────
 
-  // Get own progress
+  // Get own progress — requires active subscription
   app.get(
     api.progress.list.path,
     isAuthenticated,
+    requireActiveApproval,
+    requireActiveSubscription,
     async (req: any, res) => {
       const userId = req.userId;
       const progress = await storage.getUserProgress(userId);
@@ -286,10 +351,105 @@ export async function registerRoutes(
 
   // ─── Videos ───────────────────────────────────────────────────────────────
 
-  // List videos — admins see all, athletes see own
+  // S3 health check — let the frontend know whether private upload is available
+  app.get("/api/videos/s3-status", isAuthenticated, (_req, res) => {
+    res.json({ configured: isS3Configured() });
+  });
+
+  // Generate a presigned S3 PUT URL for direct browser → S3 upload.
+  // Returns { uploadUrl, storageKey } — the client uploads the file, then
+  // calls POST /api/videos with { title, storageKey } to save the record.
+  app.post(
+    "/api/videos/presigned-upload",
+    isAuthenticated,
+    requireActiveApproval,
+    requireAthleteOrAdmin,
+    async (req: any, res) => {
+      try {
+        if (!isS3Configured()) {
+          return res.status(503).json({
+            message: "Private video storage is not configured. Contact support.",
+            code: "S3_NOT_CONFIGURED",
+          });
+        }
+        const { filename, contentType } = req.body;
+        if (!filename || !contentType) {
+          return res.status(400).json({ message: "filename and contentType required" });
+        }
+        const allowedTypes = ["video/mp4", "video/quicktime", "video/x-msvideo", "video/webm", "video/mov"];
+        if (!allowedTypes.includes(contentType)) {
+          return res.status(400).json({ message: "Unsupported video format. Use MP4, MOV, AVI, or WebM." });
+        }
+
+        // Enforce subscription + credit gate before generating upload URL
+        const userId = req.userId;
+        const sub = await storage.getSubscription(userId);
+        const tier = sub?.tier || "none";
+        if (tier === "none" || tier === "tier1") {
+          return res.status(403).json({
+            message: "Video submissions require a Tier 2 or higher subscription.",
+          });
+        }
+        const creditsUsed = sub?.videoCreditsUsed || 0;
+        const creditsLimit = sub?.videoCreditsLimit || 0;
+        if (creditsUsed >= creditsLimit) {
+          return res.status(403).json({
+            message: `You have used all ${creditsLimit} video credits for this billing period.`,
+          });
+        }
+
+        const storageKey = generateStorageKey(filename);
+        const uploadUrl = await getPresignedUploadUrl(storageKey, contentType);
+        res.json({ uploadUrl, storageKey });
+      } catch (err: any) {
+        console.error("Presigned upload error:", err);
+        res.status(500).json({ message: err.message || "Failed to generate upload URL" });
+      }
+    }
+  );
+
+  // Generate a presigned S3 GET URL so an authorised user can view a video.
+  // URL expires in 1 hour — clients must request fresh URLs, never cache.
+  app.get(
+    "/api/videos/:id/signed-url",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) return res.status(400).json({ message: "Invalid video ID" });
+
+        const userId = req.userId;
+        const user = await storage.getUser(userId);
+        const video = await storage.getVideo(id);
+        if (!video) return res.status(404).json({ message: "Video not found" });
+
+        // Ownership check: athlete can only view their own, admin can view all
+        if (user?.role !== "admin" && video.athleteId !== userId) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+
+        if (!video.storageKey) {
+          return res.status(400).json({ message: "This video does not use private storage." });
+        }
+        if (!isS3Configured()) {
+          return res.status(503).json({ message: "Private video storage is not configured." });
+        }
+
+        const viewUrl = await getPresignedViewUrl(video.storageKey);
+        res.json({ viewUrl, expiresIn: 3600 });
+      } catch (err: any) {
+        console.error("Signed URL error:", err);
+        res.status(500).json({ message: err.message || "Failed to generate view URL" });
+      }
+    }
+  );
+
+  // List videos — admins see all, athletes see own; requires approval + subscription
   app.get(
     api.videos.list.path,
     isAuthenticated,
+    requireActiveApproval,
+    requireActiveSubscription,
     async (req: any, res) => {
       const userId = req.userId;
       const user = await storage.getUser(userId);
@@ -305,6 +465,8 @@ export async function registerRoutes(
   app.post(
     api.videos.create.path,
     isAuthenticated,
+    requireActiveApproval,
+    requireAthleteOrAdmin,
     async (req: any, res) => {
       try {
         const input = api.videos.create.input.parse(req.body);

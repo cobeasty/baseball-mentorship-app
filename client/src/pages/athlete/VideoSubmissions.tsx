@@ -1,31 +1,107 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Card, Button, Input, Label, Badge } from "@/components/ui";
-import { useVideos, useCreateVideo, useVideoFeedback } from "@/hooks/use-videos";
+import {
+  useVideos,
+  useCreateVideo,
+  useVideoFeedback,
+  useS3Status,
+  useS3VideoUpload,
+  useSignedVideoUrl,
+} from "@/hooks/use-videos";
 import { useSubscription } from "@/hooks/use-subscription";
-import { Video, Upload, MessageSquare, AlertCircle, CreditCard } from "lucide-react";
+import { Video, Upload, MessageSquare, AlertCircle, CreditCard, Lock, ExternalLink, FileVideo } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 
+// ─── Secure video viewer ───────────────────────────────────────────────────
+// Fetches a presigned URL on demand for a private S3 video.
+function SecureVideoViewer({ videoId }: { videoId: number }) {
+  const { data, isLoading, refetch } = useSignedVideoUrl(videoId);
+  return (
+    <div>
+      {isLoading ? (
+        <p className="text-xs text-muted-foreground">Loading secure URL…</p>
+      ) : data?.viewUrl ? (
+        <a
+          href={data.viewUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 text-sm text-blue-400 hover:underline"
+          data-testid={`link-view-video-${videoId}`}
+        >
+          <Lock className="w-3 h-3" /> Watch Private Video (expires in 1 hr)
+          <ExternalLink className="w-3 h-3" />
+        </a>
+      ) : (
+        <button
+          onClick={() => refetch()}
+          className="text-xs text-muted-foreground hover:text-primary underline"
+        >
+          Load secure link
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function VideoSubmissions() {
   const { data: videos, isLoading } = useVideos();
   const { data: subscription } = useSubscription();
+  const { data: s3Status } = useS3Status();
   const createVideo = useCreateVideo();
+  const s3Upload = useS3VideoUpload();
   const { toast } = useToast();
+
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const [selectedVideoId, setSelectedVideoId] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: feedbackData } = useVideoFeedback(selectedVideoId);
 
-  // Compute credit stats
   const tier = subscription?.tier || "none";
   const creditsUsed = subscription?.videoCreditsUsed ?? 0;
   const creditsLimit = subscription?.videoCreditsLimit ?? 0;
   const creditsRemaining = Math.max(0, creditsLimit - creditsUsed);
   const hasVideoAccess = tier === "tier2" || tier === "tier3";
+  const s3Configured = s3Status?.configured ?? false;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // ─── S3 file upload ──────────────────────────────────────────────────────
+  const handleFileUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title || !selectedFile) return;
+    try {
+      setUploadProgress("Securing upload connection…");
+      const { storageKey } = await s3Upload.mutateAsync(selectedFile);
+      setUploadProgress("Saving submission…");
+      await createVideo.mutateAsync({
+        title,
+        videoUrl: "private", // placeholder — actual content is in storageKey
+        storageKey,
+      });
+      setTitle("");
+      setSelectedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      setUploadProgress(null);
+      toast({
+        title: "Video Submitted",
+        description: "Your video is securely stored and queued for review.",
+      });
+    } catch (err: any) {
+      setUploadProgress(null);
+      toast({
+        title: "Submission Failed",
+        description: err.message || "Failed to submit video. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // ─── URL fallback submission ───────────────────────────────────────────────
+  const handleUrlSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !url) return;
     try {
@@ -44,6 +120,8 @@ export default function VideoSubmissions() {
       });
     }
   };
+
+  const isSubmitting = s3Upload.isPending || createVideo.isPending;
 
   return (
     <div className="space-y-8">
@@ -97,15 +175,79 @@ export default function VideoSubmissions() {
                   </Link>
                 )}
               </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
+            ) : s3Configured ? (
+              /* ── S3 secure file upload form ── */
+              <form onSubmit={handleFileUpload} className="space-y-4">
                 {/* Credit counter */}
                 <div className="flex items-center justify-between p-3 bg-primary/10 border border-primary/20 rounded-lg">
                   <span className="text-sm text-muted-foreground">Credits remaining</span>
-                  <span
-                    className="font-bold text-primary text-lg"
-                    data-testid="text-credits-remaining"
+                  <span className="font-bold text-primary text-lg" data-testid="text-credits-remaining">
+                    {creditsRemaining} / {creditsLimit}
+                  </span>
+                </div>
+
+                {/* Private storage badge */}
+                <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/10 border border-green-400/20 rounded-lg px-3 py-2">
+                  <Lock className="w-3 h-3" />
+                  Private secure storage — your video is never publicly accessible
+                </div>
+
+                <div>
+                  <Label>Title / Focus Area</Label>
+                  <Input
+                    placeholder="e.g. Swing mechanics from side"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    required
+                    data-testid="input-video-title"
+                  />
+                </div>
+
+                <div>
+                  <Label>Video File (MP4, MOV, WebM)</Label>
+                  <div
+                    className="mt-1 border-2 border-dashed border-white/20 rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                    onClick={() => fileInputRef.current?.click()}
+                    data-testid="dropzone-video-file"
                   >
+                    <FileVideo className="w-8 h-8 text-muted-foreground mx-auto mb-2 opacity-60" />
+                    {selectedFile ? (
+                      <p className="text-sm text-white">{selectedFile.name}</p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Click to select a video file</p>
+                    )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="video/mp4,video/quicktime,video/webm,video/x-msvideo"
+                      className="hidden"
+                      required
+                      onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+                      data-testid="input-video-file"
+                    />
+                  </div>
+                </div>
+
+                {uploadProgress && (
+                  <p className="text-xs text-primary animate-pulse">{uploadProgress}</p>
+                )}
+
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={isSubmitting || !selectedFile || !title}
+                  data-testid="button-submit-video"
+                >
+                  {isSubmitting ? "Uploading…" : "Submit for Review"}
+                </Button>
+              </form>
+            ) : (
+              /* ── URL-based submission form (fallback when S3 not configured) ── */
+              <form onSubmit={handleUrlSubmit} className="space-y-4">
+                {/* Credit counter */}
+                <div className="flex items-center justify-between p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                  <span className="text-sm text-muted-foreground">Credits remaining</span>
+                  <span className="font-bold text-primary text-lg" data-testid="text-credits-remaining">
                     {creditsRemaining} / {creditsLimit}
                   </span>
                 </div>
@@ -188,11 +330,25 @@ export default function VideoSubmissions() {
             videos.map((vid) => (
               <Card key={vid.id} className="p-0 overflow-hidden" data-testid={`card-video-${vid.id}`}>
                 <div className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white/5 bg-white/[0.02]">
-                  <div>
+                  <div className="space-y-1">
                     <h3 className="font-bold text-white">{vid.title}</h3>
                     <p className="text-xs text-muted-foreground">
                       Submitted {new Date(vid.submittedAt!).toLocaleDateString()}
                     </p>
+                    {/* Video link or secure viewer */}
+                    {vid.storageKey ? (
+                      <SecureVideoViewer videoId={vid.id} />
+                    ) : vid.videoUrl && vid.videoUrl !== "private" ? (
+                      <a
+                        href={vid.videoUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-blue-400 hover:underline"
+                        data-testid={`link-video-url-${vid.id}`}
+                      >
+                        <ExternalLink className="w-3 h-3" /> View submission
+                      </a>
+                    ) : null}
                   </div>
                   <div className="flex items-center gap-4">
                     <Badge
@@ -216,9 +372,7 @@ export default function VideoSubmissions() {
                         size="sm"
                         variant="outline"
                         onClick={() =>
-                          setSelectedVideoId(
-                            selectedVideoId === vid.id ? null : vid.id
-                          )
+                          setSelectedVideoId(selectedVideoId === vid.id ? null : vid.id)
                         }
                         data-testid={`button-feedback-${vid.id}`}
                       >

@@ -38,7 +38,7 @@ export default function Modules() {
           </p>
         </div>
         <Link href="/get-started">
-          <Btn data-testid="button-modules-get-started">View Plans</Btn>
+          <Button data-testid="button-modules-get-started">View Plans</Button>
         </Link>
       </div>
     );

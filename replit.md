@@ -27,7 +27,7 @@ A legally compliant, subscription-based web app for baseball athletes ages 14–
 - Video submission credit limits enforced per tier (Tier 1: 0, Tier 2: 4/mo, Tier 3: 8/mo)
 
 ### Athlete Portal
-- Dashboard: progress tracker, announcements board, subscription banner, recent videos
+- Dashboard: progress tracker, announcements board, subscription banner, recent videos, Coach's Corner tips card
 - Training Modules: locked progression through Level 1 (Foundations), Level 2 (Competitive Mindset), Level 3 (Recruiting Blueprint)
 - Video Analysis: submit videos (tier-gated), track review status
 - Settings: subscription management, billing portal, plan upgrade/downgrade/cancel

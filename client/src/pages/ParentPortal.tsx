@@ -11,7 +11,7 @@ import { User, Video as VideoType, VideoFeedback, Agreement } from "@shared/sche
 import { useToast } from "@/hooks/use-toast";
 
 function AthleteProgressCard({ athlete }: { athlete: User }) {
-  const { data: progress } = useQuery<any[]>({ queryKey: ["/api/progress", athlete.id] });
+  const { data: progress } = useQuery<any[]>({ queryKey: [`/api/progress/${athlete.id}`] });
   const { data: modules } = useQuery<any[]>({ queryKey: ["/api/modules"] });
 
   const total = modules?.length || 0;
@@ -55,10 +55,10 @@ function AthleteProgressCard({ athlete }: { athlete: User }) {
 
 function AthleteVideosCard({ athlete }: { athlete: User }) {
   const { data: videos } = useQuery<VideoType[]>({
-    queryKey: ["/api/videos"],
+    queryKey: [`/api/videos?athleteId=${athlete.id}`],
   });
 
-  const athleteVideos = videos?.filter(v => v.athleteId === athlete.id) || [];
+  const athleteVideos = videos || [];
   const [expanded, setExpanded] = useState(false);
   const shown = expanded ? athleteVideos : athleteVideos.slice(0, 3);
 

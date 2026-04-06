@@ -20,6 +20,8 @@ export async function processStripeWebhook(payload: Buffer, signature: string): 
 }
 
 async function handleBusinessLogic(event: any): Promise<void> {
+  const ts = new Date().toISOString();
+  console.log(`[stripe-webhook] ${ts} event=${event.type} id=${event.id}`);
   try {
     switch (event.type) {
       case "checkout.session.completed": {

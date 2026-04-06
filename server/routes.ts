@@ -44,13 +44,13 @@ function requireSelfOrAdmin(getTargetId: (req: any) => string) {
 }
 
 // ─── Active approval middleware ───────────────────────────────────────────────
-// Athletes must have approvalStatus=active; admins always pass through
+// Athletes must have approvalStatus=active; admins and parents always pass through
 async function requireActiveApproval(req: any, res: Response, next: NextFunction) {
   const userId = req.userId;
   if (!userId) return res.status(401).json({ message: "Unauthorized" });
   const user = await storage.getUser(userId);
   if (!user) return res.status(401).json({ message: "User not found" });
-  if (user.role === "admin") return next();
+  if (user.role === "admin" || user.role === "parent") return next();
   if (user.approvalStatus !== "active") {
     return res.status(403).json({
       message: "Your account has not been approved yet.",
@@ -58,6 +58,23 @@ async function requireActiveApproval(req: any, res: Response, next: NextFunction
     });
   }
   next();
+}
+
+// ─── Parent-of-athlete helper ─────────────────────────────────────────────────
+// Returns true if parentId is a parent whose email matches athleteId's parentEmail
+async function isLinkedParent(parentId: string, athleteId: string): Promise<boolean> {
+  if (parentId === athleteId) return false;
+  const [parent, athlete] = await Promise.all([
+    storage.getUser(parentId),
+    storage.getUser(athleteId),
+  ]);
+  if (!parent || !athlete) return false;
+  if (parent.role !== "parent") return false;
+  return !!(
+    parent.email &&
+    athlete.parentEmail &&
+    parent.email.toLowerCase() === athlete.parentEmail.toLowerCase()
+  );
 }
 
 // ─── Active subscription middleware ───────────────────────────────────────────
@@ -102,9 +119,6 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   registerAuthRoutes(app);
-
-  const { registerChatRoutes } = await import("./replit_integrations/chat");
-  registerChatRoutes(app);
 
   // ─── Users ────────────────────────────────────────────────────────────────
 
@@ -323,13 +337,24 @@ export async function registerRoutes(
     }
   );
 
-  // Get progress for specific user — self or admin
+  // Get progress for specific user — self, admin, or linked parent
   app.get(
     "/api/progress/:userId",
     isAuthenticated,
-    requireSelfOrAdmin((req) => req.params.userId),
-    async (req, res) => {
-      const progress = await storage.getUserProgress(req.params.userId);
+    async (req: any, res) => {
+      const requesterId = req.userId;
+      const targetId = req.params.userId;
+      const requester = await storage.getUser(requesterId);
+      if (!requester) return res.status(401).json({ message: "Unauthorized" });
+
+      const isSelf = requesterId === targetId;
+      const isAdmin = requester.role === "admin";
+      const linked = !isSelf && !isAdmin ? await isLinkedParent(requesterId, targetId) : false;
+
+      if (!isSelf && !isAdmin && !linked) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      const progress = await storage.getUserProgress(targetId);
       res.json(progress);
     }
   );
@@ -448,7 +473,8 @@ export async function registerRoutes(
     }
   );
 
-  // List videos — admins see all, athletes see own; requires approval + subscription
+  // List videos — admins see all, athletes see own, parents see linked athlete's
+  // Supports ?athleteId= query param for parent and admin access.
   app.get(
     api.videos.list.path,
     isAuthenticated,
@@ -457,11 +483,21 @@ export async function registerRoutes(
     async (req: any, res) => {
       const userId = req.userId;
       const user = await storage.getUser(userId);
-      const vids =
-        user?.role === "admin"
-          ? await storage.getVideos()
-          : await storage.getVideos(userId);
-      res.json(vids);
+      const { athleteId } = req.query as { athleteId?: string };
+
+      if (user?.role === "admin") {
+        const vids = athleteId ? await storage.getVideos(athleteId) : await storage.getVideos();
+        return res.json(vids);
+      }
+
+      if (user?.role === "parent" && athleteId) {
+        const linked = await isLinkedParent(userId, athleteId);
+        if (!linked) return res.status(403).json({ message: "Access denied" });
+        return res.json(await storage.getVideos(athleteId));
+      }
+
+      // Athletes always see only their own videos
+      res.json(await storage.getVideos(userId));
     }
   );
 

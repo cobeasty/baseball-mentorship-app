@@ -5,7 +5,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { Badge, Button, Card } from "@/components/ui";
 import { Trophy, Video, ArrowRight, Megaphone, Pin, BookOpen, TrendingUp, Star, Lock } from "lucide-react";
 import { Link } from "wouter";
-import { BaseballAI } from "@/components/BaseballAI";
 import { motion } from "framer-motion";
 
 const LEVELS = [
@@ -326,9 +325,34 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* ── Right column: AI mentor ─────────────────────────── */}
+        {/* ── Right column: Coach's Corner ─────────────────────── */}
         <div className="lg:sticky lg:top-8">
-          <BaseballAI />
+          <Card className="border-primary/20 bg-black/40 backdrop-blur-sm overflow-hidden">
+            <div className="p-4 border-b border-white/10 flex items-center gap-2 bg-card/50">
+              <Star className="w-5 h-5 text-primary" />
+              <h2 className="font-display font-bold uppercase tracking-wider text-white">
+                Coach's Corner
+              </h2>
+            </div>
+            <div className="p-4 space-y-3">
+              {[
+                { tip: "Visualize success before every at-bat — mental reps count.", icon: "🎯" },
+                { tip: "Consistent mechanics beat raw power every single time.", icon: "⚡" },
+                { tip: "Study opposing pitchers between innings, not just your own at-bats.", icon: "📊" },
+                { tip: "Your mental game is 50% of what happens at the plate.", icon: "🧠" },
+                { tip: "Film your swing. What you feel and what you do are different.", icon: "🎥" },
+                { tip: "Compete in practice like it's a playoff game — habits transfer.", icon: "🏆" },
+              ].map((item, i) => (
+                <div
+                  key={i}
+                  className="flex gap-3 p-3 bg-white/5 rounded-lg border border-white/5 hover:border-primary/20 transition-colors"
+                >
+                  <span className="text-lg shrink-0 leading-tight">{item.icon}</span>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{item.tip}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
         </div>
       </div>
     </div>
